@@ -45,11 +45,45 @@ static const enum page_type g_page_type_by_idle_kind[] = {
     PAGE_TYPE_INVAL,
 };
 
-static const u_int64_t g_page_size[PAGE_TYPE_INVAL] = {
+static u_int64_t g_page_size[PAGE_TYPE_INVAL] = {
     1UL << PTE_SIZE_SHIFT, /* PTE size */
     1UL << PMD_SIZE_SHIFT, /* PMD size */
     1UL << PUD_SIZE_SHIFT, /* PUD size */
 };
+
+static unsigned int get_page_shift(long pagesize)
+{
+    unsigned int page_shift = 0;
+    pagesize = pagesize >> 1;
+    while (pagesize != 0) {
+        page_shift++;
+        pagesize = pagesize >> 1;
+    }
+
+    return page_shift;
+}
+
+int init_g_page_size(void)
+{
+    unsigned int page_shift;
+    long pagesize = -1;
+
+    pagesize = sysconf(_SC_PAGESIZE);
+    if (pagesize == -1) {
+        etmemd_log(ETMEMD_LOG_ERR, "get pagesize fail, error: %d\n", errno);
+        return -1;
+    }
+
+    /* In the x86 architecture, the pagesize is 4kB. In the arm64 architecture,
+     * the pagesize is 4KB, 16KB, 64KB. Therefore, the pagesize in different
+     * scenarios is calculated as follows: */
+    page_shift = get_page_shift(pagesize);
+    g_page_size[PTE_TYPE] = 1 << page_shift;                         /* PTE_SIZE */
+    g_page_size[PMD_TYPE] = 1 << (((page_shift - 3) * (4 - 2)) + 3); /* PMD_SIZE = (page_shift - 3) * (4 - 2) + 3  */
+    g_page_size[PUD_TYPE] = 1 << (((page_shift - 3) * (4 - 1)) + 3); /* PUD_SIZE = (page_shift - 3) * (4 - 1) + 3  */
+
+    return 0;
+}
 
 static bool is_anonymous(const struct vma *vma)
 {
@@ -470,7 +504,7 @@ static struct page_refs **walk_vmas(int fd,
 
     /* we make the buffer size as fitable as within a vma.
      * because the size of buffer passed to kernel will be calculated again (<< (3 + PAGE_SHIFT)) */
-    size = (walk_address->walk_end - walk_address->walk_start) >> (3 + PAGE_SHIFT);
+    size = ((walk_address->walk_end - walk_address->walk_start) >> 3) / g_page_size[PTE_TYPE];
 
     /* we need to compare the size to the minimum size that kernel handled */
     size = size < EPT_IDLE_BUF_MIN ? EPT_IDLE_BUF_MIN : size;
