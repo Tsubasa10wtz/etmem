@@ -20,6 +20,7 @@
 #include "etmemd_rpc.h"
 #include "etmemd_common.h"
 #include "etmemd_project.h"
+#include "etmemd_scan.h"
 
 int main(int argc, char *argv[])
 {
@@ -33,6 +34,10 @@ int main(int argc, char *argv[])
     }
     if (is_help) {
         return 0;
+    }
+
+    if (init_g_page_size() == -1) {
+        return -1;
     }
 
     etmemd_handle_signal();
