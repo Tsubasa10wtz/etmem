@@ -1,0 +1,12 @@
+options:
+loop : 3
+interval : 1
+sleep: 2
+
+policies:
+    type : pid/name
+    value : 123456/mysql
+    max_threads: 3
+    engine :slide
+      param:
+          T : 3
