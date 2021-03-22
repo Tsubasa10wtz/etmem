@@ -71,7 +71,7 @@ set_target_properties(etmemd PROPERTIES LINK_FLAGS "-s -fPIE -pie -fPIC -Wl,-z,r
 target_link_libraries(etmemd PRIVATE pthread dl rt boundscheck)
 
 if( ${ARCHITECTURE} STREQUAL "aarch64" )
- target_compile_options(etmemd PRIVATE -march=native)
+ target_compile_options(etmemd PRIVATE -march=armv8-a)
 else()
  target_compile_options(etmemd PRIVATE -march=core-avx-i -m64)
 endif()
@@ -86,7 +86,7 @@ set_target_properties(etmem PROPERTIES LINK_FLAGS "-s -fPIE -pie -fPIC -Wl,-z,re
 target_link_libraries(etmem PRIVATE pthread dl rt boundscheck)
 
 if( ${ARCHITECTURE} STREQUAL "aarch64" )
- target_compile_options(etmem PRIVATE -march=native)
+ target_compile_options(etmem PRIVATE -march=armv8-a)
 else()
  target_compile_options(etmem PRIVATE -march=core-avx-i -m64)
 endif()
