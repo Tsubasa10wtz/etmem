@@ -4,15 +4,19 @@
 
 随着CPU算力的发展，尤其是ARM核成本的降低，内存成本和内存容量成为约束业务成本和性能的核心痛点，因此如何节省内存成本，如何扩大内存容量成为存储迫切要解决的问题。
 
-etmem内存垂直扩展技术，通过DRAM+内存压缩/高性能存储新介质形成多级内存存储，对内存数据进行分级，将分级后的内存冷数据从内存介质迁移到高性能存储介质中，达到内存容量扩展的目的，从而实现内存成本下降。
+etmem内存分级扩展技术，通过DRAM+内存压缩/高性能存储新介质形成多级内存存储，对内存数据进行分级，将分级后的内存冷数据从内存介质迁移到高性能存储介质中，达到内存容量扩展的目的，从而实现内存成本下降。
 
-## 安装教程
+## 编译教程
 
 1. 下载etmem源码
 
-    $ git clone https://gitee.com/src-openeuler/etmem.git
+    $ git clone https://gitee.com/openeuler/etmem.git
 
-2. 编译安装
+2. 编译和运行依赖
+
+    etmem的编译和运行依赖于libboundscheck组件
+
+3. 编译
 
     $ cd etmem
 
@@ -24,7 +28,6 @@ etmem内存垂直扩展技术，通过DRAM+内存压缩/高性能存储新介质
 
     $ make
 
-    $ make install
 
 ## 使用说明
 
@@ -56,7 +59,7 @@ options：
 
 在运行etmem进程之前，需要管理员预先规划哪些进程需要做内存扩展，将进程信息配置到etmem配置文件中，并配置内存扫描的周期、扫描次数、内存冷热阈值等信息。
 
-配置文件的示例文件在安装etmem软件包后，放置在/etc/etmem/example_conf.yaml，示例内容为：
+配置文件的示例文件在源码包中，放置在源码根目录的conf/example_conf.yaml，建议在使用时放置在/etc/etmem/目录下，示例内容为：
 
 ```
 options:    
@@ -100,7 +103,7 @@ options:
 
 #### 使用方法
 
-通过etmem二进制执行工程创建/删除/查询操作，前提是服务端已经成功运行，并且配置文件/etc/etmem/example_conf.yaml内容正确。
+通过etmem二进制执行工程创建/删除/查询操作，前提是服务端已经成功运行，并且配置文件（e.g. /etc/etmem/example_conf.yaml）内容正确。
 
 添加工程：
 
@@ -173,7 +176,7 @@ show命令：
 
 #### 使用方法
 
-通过etmem二进制执行任务启动/停止操作，前提是服务端已经成功运行，配置文件/etc/etmem/example_conf.yaml内容正确，且etmem工程已经创建。
+通过etmem二进制执行任务启动/停止操作，前提是服务端已经成功运行，配置文件(e.g. /etc/etmem/example_conf.yaml)内容正确，且etmem工程已经创建。
 
 启动工程
 
