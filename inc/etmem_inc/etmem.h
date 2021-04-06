@@ -24,6 +24,7 @@ typedef enum etmem_cmd_e {
     ETMEM_CMD_START,
     ETMEM_CMD_STOP,
     ETMEM_CMD_SHOW,
+    ETMEM_CMD_ENGINE,
     ETMEM_CMD_HELP,
 } etmem_cmd;
 
@@ -37,7 +38,7 @@ struct etmem_conf {
 struct etmem_obj {
     char *name;
     void (*help)(void);
-    int (*do_cmd)(const struct etmem_conf *conf);
+    int (*do_cmd)(struct etmem_conf *conf);
 
     SLIST_ENTRY(etmem_obj) entry;
 };

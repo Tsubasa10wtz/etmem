@@ -25,6 +25,8 @@
 #define DECIMAL_RADIX 10
 #define ETMEMD_MAX_PARAMETER_NUM 5
 
+#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
+
 /*
  * function: parse cmdline passed to etmemd server.
  *
@@ -43,7 +45,7 @@ int get_int_value(const char *val, int *value);
 int get_unsigned_int_value(const char *val, unsigned int *value);
 void etmemd_safe_free(void **ptr);
 
-FILE *etmemd_get_proc_file(const char *pid, const char *file, const char *mode);
+FILE *etmemd_get_proc_file(const char *pid, const char *file, int flags, const char *mode);
 
 int get_keyword_and_value(const char *str, char *key, char *val);
 
@@ -55,5 +57,7 @@ int get_keyword_and_value(const char *str, char *key, char *val);
  *           NULL           - end of file.
  * */
 char *skip_blank_line(FILE *file);
+
+int dprintf_all(int fd, const char *format, ...);
 
 #endif

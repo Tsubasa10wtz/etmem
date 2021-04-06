@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <pthread.h>
+#include <glib.h>
 #include "etmemd_threadpool.h"
 #include "etmemd_threadtimer.h"
 
@@ -37,19 +38,15 @@ struct task_pid {
 struct task {
     char *type;
     char *value;
+    char *name;
     uint64_t max_threads;
 
-    struct project *proj;
-    struct engine *eng;
     struct task_pid *pids;
+    struct engine *eng;
+    void *params;
     pthread_t task_pt;
     timer_thread *timer_inst;
     thread_pool *threadpool_inst;
-
-    int (*start_etmem)(struct task *tk);
-    void (*stop_etmem)(struct task *tk);
-    void (*delete_etmem)(struct task *tk);
-    void *(*workflow_engine)(void *);
 
     struct task *next;
 };
@@ -64,5 +61,9 @@ void etmemd_free_task_struct(struct task **tk);
 
 void free_task_pid_mem(struct task_pid **tk_pid);
 
-void etmemd_print_tasks(const struct task *tk);
+void etmemd_print_tasks(int fd, const struct task *tk, char *engine_name, bool started);
+
+struct task *etmemd_add_task(GKeyFile *config);
+void etmemd_remove_task(struct task *tk);
+
 #endif

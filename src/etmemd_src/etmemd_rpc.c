@@ -18,11 +18,13 @@
 #include <sys/un.h>
 #include <sys/socket.h>
 #include <signal.h>
+#include <glib.h>
 #include "securec.h"
 #include "etmemd_rpc.h"
 #include "etmemd_project.h"
 #include "etmemd_common.h"
 #include "etmemd_log.h"
+#include "etmemd_file.h"
 
 /* the max length of sun_path in struct sockaddr_un is 108 */
 #define RPC_ADDR_LEN_MAX  108
@@ -44,6 +46,9 @@ struct server_rpc_parser g_rpc_parser[] = {
     {"proj_name", DECODE_STRING, (void **)&(g_rpc_params.proj_name)},
     {"file_name", DECODE_STRING, (void **)&(g_rpc_params.file_name)},
     {"cmd", DECODE_INT, (void **)&(g_rpc_params.cmd)},
+    {"eng_name", DECODE_STRING, (void **)&(g_rpc_params.eng_name)},
+    {"eng_cmd", DECODE_STRING, (void **)&(g_rpc_params.eng_cmd)},
+    {"task_name", DECODE_STRING, (void **)&(g_rpc_params.task_name)},
     {NULL, DECODE_END, NULL},
 };
 
@@ -51,9 +56,13 @@ struct rpc_resp_msg g_resp_msg_arr[] = {
     {OPT_SUCCESS, "success"},
     {OPT_INVAL, "error: invalid parameters"},
     {OPT_PRO_EXISTED, "error: project has been existed"},
+    {OPT_PRO_NOEXIST, "error: project is not exist"},
     {OPT_PRO_STARTED, "error: project has been started"},
     {OPT_PRO_STOPPED, "error: project has been stopped"},
-    {OPT_PRO_NOEXIST, "error: project is not exist"},
+    {OPT_ENG_EXISTED, "error: engine has been existed"},
+    {OPT_ENG_NOEXIST, "error: engine is not exist"},
+    {OPT_TASK_EXISTED, "error: task has been existed"},
+    {OPT_TASK_NOEXIST, "error: task is not exist"},
     {OPT_INTER_ERR, "error: etmemd has internal error"},
     {OPT_RET_END, NULL},
 };
@@ -66,12 +75,110 @@ static void etmemd_set_flag(int s)
     g_sock_fd = -1;
 }
 
+static void etmemd_ignore_sig(int s)
+{
+    return;
+}
+
 void etmemd_handle_signal(void)
 {
     signal(SIGINT, etmemd_set_flag);
     signal(SIGTERM, etmemd_set_flag);
+    signal(SIGPIPE, etmemd_ignore_sig);
 
     return;
+}
+
+struct obj_cmd_item {
+    char *name;
+    enum opt_result (*func)(GKeyFile *config);
+};
+
+static enum opt_result do_obj_cmd(GKeyFile *config, struct obj_cmd_item *items, unsigned n)
+{
+    unsigned i;
+    bool parsed = false;
+    enum opt_result ret;
+
+    for (i = 0; i < n; i++) {
+        if (g_key_file_has_group(config, items[i].name) == FALSE) {
+            continue;
+        }
+
+        ret = items[i].func(config);
+        if (ret != 0) {
+            etmemd_log(ETMEMD_LOG_ERR, "parse group %s fail\n", items[i].name);
+            return ret;
+        }
+        parsed = true;
+    }
+
+    if (!parsed) {
+        etmemd_log(ETMEMD_LOG_ERR, "no group has been parsed\n");
+        return OPT_INVAL;
+    }
+
+    return OPT_SUCCESS;
+}
+
+struct obj_cmd_item obj_add_items[] = {
+    {PROJ_GROUP, etmemd_project_add},
+    {ENG_GROUP, etmemd_project_add_engine},
+    {TASK_GROUP, etmemd_project_add_task},
+};
+
+static enum opt_result do_obj_add(GKeyFile *config)
+{
+    return do_obj_cmd(config, obj_add_items, ARRAY_SIZE(obj_add_items));
+}
+
+static struct obj_cmd_item obj_remove_items[] = {
+    {TASK_GROUP, etmemd_project_remove_task},
+    {ENG_GROUP, etmemd_project_remove_engine},
+    {PROJ_GROUP, etmemd_project_remove},
+};
+
+static enum opt_result do_obj_remove(GKeyFile *config)
+{
+    return do_obj_cmd(config, obj_remove_items, ARRAY_SIZE(obj_remove_items));
+}
+
+static enum opt_result handle_obj_cmd(char *file_name, enum cmd_type type)
+{
+    GKeyFile *config = NULL;
+    enum opt_result ret;
+
+    if (file_name == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "file name is not set for obj cmd\n");
+        return OPT_INVAL;
+    }
+
+    config = g_key_file_new();
+    if (config == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "get empty config file fail\n");
+        return OPT_INTER_ERR;
+    }
+
+    if (g_key_file_load_from_file(config, file_name, G_KEY_FILE_NONE, NULL) == FALSE) {
+        etmemd_log(ETMEMD_LOG_ERR, "load config file fail\n");
+        ret = OPT_INTER_ERR;
+        goto free_file;
+    }
+
+    switch (type) {
+        case OBJ_ADD:
+            ret = do_obj_add(config);
+            break;
+        case OBJ_DEL:
+            ret = do_obj_remove(config);
+            break;
+        default:
+            ret = OPT_INVAL;
+    }
+
+free_file:
+    g_key_file_free(config);
+    return ret;
 }
 
 static enum opt_result etmemd_switch_cmd(const struct server_rpc_params svr_param)
@@ -79,20 +186,22 @@ static enum opt_result etmemd_switch_cmd(const struct server_rpc_params svr_para
     enum opt_result ret = OPT_INVAL;
 
     switch (svr_param.cmd) {
-        case PROJ_ADD:
-            ret = etmemd_project_add(svr_param.proj_name, svr_param.file_name);
-            return ret;
-        case PROJ_DEL:
-            ret = etmemd_project_delete(svr_param.proj_name);
+        case OBJ_ADD:
+        case OBJ_DEL:
+            ret = handle_obj_cmd(svr_param.file_name, svr_param.cmd);
             return ret;
         case PROJ_SHOW:
-            ret = etmemd_project_show();
+            ret = etmemd_project_show(svr_param.proj_name, svr_param.sock_fd);
             return ret;
         case MIG_START:
             ret = etmemd_migrate_start(svr_param.proj_name);
             return ret;
         case MIG_STOP:
             ret = etmemd_migrate_stop(svr_param.proj_name);
+            return ret;
+        case ENG_CMD:
+            ret = etmemd_project_mgt_engine(svr_param.proj_name, svr_param.eng_name,
+                                            svr_param.eng_cmd, svr_param.task_name, svr_param.sock_fd);
             return ret;
         default:
             etmemd_log(ETMEMD_LOG_ERR, "Invalid command.\n");
@@ -297,10 +406,23 @@ static int etmemd_rpc_decode_int(void **ptr, const char *buf,
     return 0;
 }
 
+static bool skip_null_arg(const char *buf, unsigned long *idx)
+{
+    if (buf[*idx] == '-') {
+        *idx += 2; // add 2 for skipping '- '
+        return true;
+    }
+    return false;
+}
+
 static int etmemd_rpc_decode(struct server_rpc_parser *parser, const char *buf,
                              unsigned long buf_len, unsigned long *idx)
 {
     int ret;
+
+    if (skip_null_arg(buf, idx)) {
+        return 0;
+    }
 
     switch (parser->type) {
         case DECODE_STRING:
@@ -377,6 +499,10 @@ static void etmemd_rpc_send_response_msg(int sock_fd, enum opt_result result)
     int i = 0;
     ssize_t ret = -1;
 
+    if (result == OPT_SUCCESS) {
+        return;
+    }
+
     while (g_resp_msg_arr[i].msg != NULL) {
         if (result != g_resp_msg_arr[i].result) {
             i++;
@@ -398,6 +524,7 @@ static void etmemd_rpc_handle(int sock_fd)
 {
     enum opt_result ret;
 
+    g_rpc_params.sock_fd = sock_fd;
     ret = etmemd_switch_cmd(g_rpc_params);
     if (ret != OPT_SUCCESS) {
         etmemd_log(ETMEMD_LOG_ERR, "operate cmd %d fail\n", g_rpc_params.cmd);
@@ -474,7 +601,7 @@ static int etmemd_rpc_accept(int sock_fd)
         goto RPC_EXIT;
     }
 
-    etmemd_log(ETMEMD_LOG_INFO, "etmemd get socket message \"%s\"\n", recv_buf);
+    etmemd_log(ETMEMD_LOG_DEBUG, "etmemd get socket message \"%s\"\n", recv_buf);
     if (etmemd_rpc_parse(recv_buf, (unsigned long)rc) == 0) {
         etmemd_rpc_handle(accp_fd);
     }

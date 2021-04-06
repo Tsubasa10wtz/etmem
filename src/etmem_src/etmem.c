@@ -19,8 +19,9 @@
 #include <getopt.h>
 #include "securec.h"
 #include "etmem.h"
-#include "etmem_task.h"
+#include "etmem_obj.h"
 #include "etmem_project.h"
+#include "etmem_engine.h"
 
 #define CMD_POSITION 1
 
@@ -65,53 +66,10 @@ static int check_param(int argc, char *argv[], struct etmem_conf *conf,
         return -1;
     }
 
-    return 0;
-}
-
-static void fill_cmd_type(struct etmem_conf *conf, const int val)
-{
-    conf->cmd = val;
-}
-
-struct cmd_item {
-    char *cmd_name;
-    enum etmem_cmd_e cmd;
-    void (*fill_cmd_func)(struct etmem_conf *conf, const int val);
-};
-
-struct cmd_item g_cmd_items[] = {
-    {"add", ETMEM_CMD_ADD, fill_cmd_type},
-    {"del", ETMEM_CMD_DEL, fill_cmd_type},
-    {"start", ETMEM_CMD_START, fill_cmd_type},
-    {"stop", ETMEM_CMD_STOP, fill_cmd_type},
-    {"show", ETMEM_CMD_SHOW, fill_cmd_type},
-    {"help", ETMEM_CMD_HELP, fill_cmd_type},
-    {NULL, 0, NULL},
-};
-
-static int parse_command(int argc, char *argv[], struct etmem_conf *conf,
-                         const struct etmem_obj *obj)
-{
-    int ret = -1;
-    int i = 0;
-
-    while (g_cmd_items[i].cmd_name != NULL) {
-        if (strcmp(argv[CMD_POSITION], g_cmd_items[i].cmd_name) == 0) {
-            g_cmd_items[i].fill_cmd_func(conf, (int)g_cmd_items[i].cmd);
-            ret = 0;
-            break;
-        }
-        i++;
-    }
-
-    if (ret != 0) {
-        printf("invalid command %s\n", argv[CMD_POSITION]);
-        obj->help();
-        return -1;
-    }
-
-    conf->argc = argc - CMD_POSITION;
-    conf->argv = argv + CMD_POSITION;
+    argc--;
+    argv++;
+    conf->argc = argc;
+    conf->argv = argv;
 
     return 0;
 }
@@ -139,7 +97,7 @@ static int parse_args(int argc, char *argv[], struct etmem_conf *conf,
         return -EINVAL;
     }
 
-    return parse_command(argc, argv, conf, *obj);
+    return 0;
 }
 
 void etmem_register_obj(struct etmem_obj *obj)
@@ -162,7 +120,8 @@ int main(int argc, char *argv[])
 
     SLIST_INIT(&g_etmem_objs);
     project_init();
-    migrate_init();
+    obj_init();
+    engine_init();
 
     if (parse_args(argc, argv, &conf, &obj) != 0) {
         if (conf.obj != NULL && strcmp(conf.obj, "help") == 0 &&
@@ -173,7 +132,7 @@ int main(int argc, char *argv[])
         goto out;
     }
 
-    if (conf.cmd == ETMEM_CMD_HELP) {
+    if (strcmp(conf.argv[0], "help") == 0) {
         obj->help();
         err = 0;
         goto out;
@@ -187,7 +146,8 @@ int main(int argc, char *argv[])
     }
 
 out:
+    engine_exit();
+    obj_exit();
     project_exit();
-    migrate_exit();
     return err;
 }

@@ -27,65 +27,44 @@ static void project_help(void)
 {
     fprintf(stderr,
             "\nUsage:\n"
-            "    etmem project add [options]\n"
-            "    etmem project del [options]\n"
+            "    etmem project start [options]\n"
+            "    etmem project stop [options]\n"
             "    etmem project show [options]\n"
             "    etmem project help\n"
             "\nOptions:\n"
-            "    -f|--file <conf_file>     Add configuration file\n"
             "    -n|--name <proj_name>     Add project name\n"
             "    -s|--socket <socket_name> Socket name to connect\n"
             "\nNotes:\n"
             "    1. Project name and socket name must be given when execute add or del option.\n"
-            "    2. Configuration file must be given when execute add option.\n"
-            "    3. Socket name must be given when execute show option.\n");
+            "    2. Socket name must be given when execute show option.\n");
 }
 
-static int project_parse_cmd(const struct etmem_conf *conf, struct mem_proj *proj)
+struct project_cmd_item {
+    char *cmd_name;
+    enum etmem_cmd_e cmd;
+};
+
+static struct project_cmd_item g_project_cmd_items[] = {
+    {"show", ETMEM_CMD_SHOW},
+    {"start", ETMEM_CMD_START},
+    {"stop", ETMEM_CMD_STOP},
+};
+
+static int project_parse_cmd(struct etmem_conf *conf, struct mem_proj *proj)
 {
-    switch (conf->cmd) {
-        case ETMEM_CMD_ADD:
-            /* fallthrough */
-        case ETMEM_CMD_DEL:
-            /* fallthrough */
-        case ETMEM_CMD_SHOW:
-            goto EXIT;
-        default:
-            printf("invalid command %u of project\n", conf->cmd);
-            return -EINVAL;
+    unsigned i;
+    char *cmd = NULL;
+
+    cmd = conf->argv[0];
+    for (i = 0; i < ARRAY_SIZE(g_project_cmd_items); i++) {
+        if (strcmp(cmd, g_project_cmd_items[i].cmd_name) == 0) {
+            proj->cmd = g_project_cmd_items[i].cmd;
+            return 0;
+        }
     }
 
-EXIT:
-    proj->cmd = conf->cmd;
-    return 0;
-}
-
-static int parse_file_name(const char *val, char **file_name)
-{
-    size_t len;
-    int ret;
-
-    len = strlen(val) + 1;
-    if (len > FILE_NAME_MAX_LEN) {
-        printf("file name too long, should not be larger than %u\n", FILE_NAME_MAX_LEN);
-        return -ENAMETOOLONG;
-    }
-
-    *file_name = (char *)calloc(len, sizeof(char));
-    if (*file_name == NULL) {
-        printf("malloc file name failed.\n");
-        return -ENOMEM;
-    }
-
-    ret = strncpy_s(*file_name, len, val, len - 1);
-    if (ret != EOK) {
-        printf("strncpy_s file name failed.\n");
-        free(*file_name);
-        *file_name = NULL;
-        return ret;
-    }
-
-    return 0;
+    printf("project cmd %s is not supported\n", cmd);
+    return -1;
 }
 
 static int project_parse_args(const struct etmem_conf *conf, struct mem_proj *proj)
@@ -94,7 +73,6 @@ static int project_parse_args(const struct etmem_conf *conf, struct mem_proj *pr
     int ret;
     int params_cnt = 0;
     struct option opts[] = {
-        {"file", required_argument, NULL, 'f'},
         {"name", required_argument, NULL, 'n'},
         {"socket", required_argument, NULL, 's'},
         {NULL, 0, NULL, 0},
@@ -103,13 +81,6 @@ static int project_parse_args(const struct etmem_conf *conf, struct mem_proj *pr
     while ((opt = getopt_long(conf->argc, conf->argv, "f:n:s:",
                               opts, NULL)) != -1) {
         switch (opt) {
-            case 'f':
-                ret = parse_file_name(optarg, &proj->file_name);
-                if (ret != 0) {
-                    printf("parse file name failed.\n");
-                    return ret;
-                }
-                break;
             case 'n':
                 ret = parse_name_string(optarg, &proj->proj_name, PROJECT_NAME_MAX_LEN);
                 if (ret != 0) {
@@ -149,14 +120,9 @@ static int project_check_params(const struct mem_proj *proj)
         return 0;
     }
 
-    if (proj->proj_name == NULL || strlen(proj->proj_name) == 0) {
-        printf("project name must all be given, please check.\n");
-        return -EINVAL;
-    }
-
-    if (proj->cmd == ETMEM_CMD_ADD) {
-        if (proj->file_name == NULL || strlen(proj->file_name) == 0) {
-            printf("file name must be given in add command.\n");
+    if (proj->cmd == ETMEM_CMD_START || proj->cmd == ETMEM_CMD_STOP) {
+        if (proj->proj_name == NULL || strlen(proj->proj_name) == 0) {
+            printf("project name must be given, please check\n");
             return -EINVAL;
         }
     }
@@ -164,7 +130,7 @@ static int project_check_params(const struct mem_proj *proj)
     return 0;
 }
 
-static int project_do_cmd(const struct etmem_conf *conf)
+static int project_do_cmd(struct etmem_conf *conf)
 {
     struct mem_proj proj;
     int ret;

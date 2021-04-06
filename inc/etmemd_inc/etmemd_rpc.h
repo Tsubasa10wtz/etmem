@@ -19,11 +19,12 @@
 #include <stdbool.h>
 
 enum cmd_type {
-    PROJ_ADD = 0,
-    PROJ_DEL,
+    OBJ_ADD = 0,
+    OBJ_DEL,
     MIG_START,
     MIG_STOP,
     PROJ_SHOW,
+    ENG_CMD,
 };
 
 enum rpc_decode_type {
@@ -36,6 +37,10 @@ struct server_rpc_params {
     char *proj_name;
     char *file_name;
     int cmd;
+    int sock_fd;
+    char *eng_name;
+    char *eng_cmd;
+    char *task_name;
 };
 
 struct server_rpc_parser {

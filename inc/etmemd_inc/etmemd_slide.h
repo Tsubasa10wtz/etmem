@@ -16,10 +16,11 @@
 #ifndef ETMEMD_SLIDE_H
 #define ETMEMD_SLIDE_H
 
-
+#include "etmemd_pool_adapter.h"
 #include "etmemd_engine.h"
 
 struct slide_params {
+    struct task_executor *executor;
     int t;          /* watermark */
 };
 

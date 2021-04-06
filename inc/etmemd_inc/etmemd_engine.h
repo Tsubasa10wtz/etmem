@@ -16,11 +16,13 @@
 #ifndef ETMEMD_ENGINE_H
 #define ETMEMD_ENGINE_H
 
+#include <glib.h>
 #include "etmemd.h"
 #include "etmemd_task.h"
 
 enum eng_type {
     SLIDE_ENGINE = 0,
+    CSLIDE_ENGINE,
     DYNAMIC_FB_ENGINE,
     HISTORICAL_FB_ENGINE,
     THIRDPARTY_ENGINE,
@@ -32,44 +34,29 @@ enum eng_type {
  * */
 struct engine {
     int engine_type;            /* engine type used for elimination strategy */
+    char *name;
     void *params;               /* point to engine parameter struct */
-    void *task;                 /* point to task this engine belongs to */
+    struct project *proj;
     struct page_refs *page_ref; /* scan result */
+    struct engine_ops *ops;
+    struct task *tasks;
     uint64_t page_cnt;          /* number of pages */
-    struct adapter *adp;        /* configured migration strategy */
-
-    /* parse parameter configuration */
-    int (*parse_param_conf)(struct engine *eng, FILE *file);
-
-    /* migrate policy function */
-    struct memory_grade *(*mig_policy_func)(struct page_refs **page_refs, void *params);
-
-    /* alloc tkpid params space based on different policies. */
-    int (*alloc_params)(struct task_pid **tk_pid);
+    struct engine *next;
 };
 
-/*
- * adapter struct
- * */
-struct adapter {
-    /* scan function */
-    struct page_refs *(*do_scan)(const struct task_pid *tpid, const struct task *tk);
-
-    /* migrate function */
-    int (*do_migrate)(unsigned int pid, const struct memory_grade *memory_grade);
+struct engine_ops {
+    int (*fill_eng_params)(GKeyFile *config, struct engine *eng);
+    void (*clear_eng_params)(struct engine *eng);
+    int (*fill_task_params)(GKeyFile *config, struct task *task);
+    void (*clear_task_params)(struct task *tk);
+    int (*start_task)(struct engine *eng, struct task *tk);
+    void (*stop_task)(struct engine *eng, struct task *tk);
+    int (*alloc_pid_params)(struct engine *eng, struct task_pid **tk_pid);
+    void (*free_pid_params)(struct engine *eng, struct task_pid **tk_pid);
+    int (*eng_mgt_func)(struct engine *eng, struct task *tk, char *cmd, int fd);
 };
 
-struct engine_item {
-    enum eng_type eng_type;
-    int (*fill_eng_func)(struct engine *eng);
-};
+struct engine *etmemd_engine_add(GKeyFile *config);
+void etmemd_engine_remove(struct engine *eng);
 
-struct engine_private_item {
-    char *priv_sec_name;
-    int (*fill_eng_private_func)(const struct engine *eng, const char *val);
-};
-
-const char *etmemd_get_eng_name(enum eng_type type);
-
-int fill_engine_type(struct engine *eng, const char *val);
 #endif

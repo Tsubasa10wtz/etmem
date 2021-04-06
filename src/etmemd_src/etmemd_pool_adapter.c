@@ -17,17 +17,18 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "etmemd_pool_adapter.h"
+#include "etmemd_engine.h"
 
-static void push_ctrl_workflow(struct task_pid **tk_pid)
+static void push_ctrl_workflow(struct task_pid **tk_pid, void *(*exector)(void *))
 {
     struct task_pid *curr_pid = NULL;
     struct task *tk = (*tk_pid)->tk;
     while (*tk_pid != NULL) {
         if (threadpool_add_worker(tk->threadpool_inst,
-                                  tk->workflow_engine,
+                                  exector,
                                   (*tk_pid)) != 0) {
             etmemd_log(ETMEMD_LOG_DEBUG, "Failed to push < pid %u, Task_value %s, project_name %s >\n",
-                       (*tk_pid)->pid, tk->value, tk->proj->name);
+                       (*tk_pid)->pid, tk->value, tk->eng->proj->name);
             curr_pid = *tk_pid;
             *tk_pid = (*tk_pid)->next;
             free_task_pid_mem(&curr_pid);
@@ -40,18 +41,19 @@ static void push_ctrl_workflow(struct task_pid **tk_pid)
 
 static void *launch_threadtimer_executor(void *arg)
 {
-    struct task *tk = (struct task *)arg;
+    struct task_executor *executor = (struct task_executor*)arg;
+    struct task *tk = executor->tk;
     thread_pool *pool_inst = NULL;
     bool done = false;
     int execution_size;
     int scheduing_count;
 
-    if (tk->proj->start) {
+    if (tk->eng->proj->start) {
         if (etmemd_get_task_pids(tk) != 0) {
             return NULL;
         }
 
-        push_ctrl_workflow(&tk->pids);
+        push_ctrl_workflow(&tk->pids, executor->func);
 
         threadpool_notify(tk->threadpool_inst);
 
@@ -72,32 +74,34 @@ static void *launch_threadtimer_executor(void *arg)
     return NULL;
 }
 
-int start_threadpool_work(struct task *tk)
+int start_threadpool_work(struct task_executor *executor)
 {
+    struct task *tk = executor->tk;
+
     etmemd_log(ETMEMD_LOG_DEBUG, "start etmem  for Task_value %s, project_name %s\n",
-               tk->value, tk->proj->name);
+               tk->value, tk->eng->proj->name);
 
     /* create the threadpool first and it will start auto */
     tk->threadpool_inst = threadpool_create(tk->max_threads);
     if (tk->threadpool_inst == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "Thread pool creation failed for project <%s> task <%s>.\n",
-                   tk->proj->name, tk->value);
+                   tk->eng->proj->name, tk->value);
         return -1;
     }
 
-    tk->timer_inst = thread_timer_create(tk->proj->interval);
+    tk->timer_inst = thread_timer_create(tk->eng->proj->interval);
     if (tk->timer_inst == NULL) {
         threadpool_stop_and_destroy(&tk->threadpool_inst);
         etmemd_log(ETMEMD_LOG_ERR, "Timer task creation failed for project <%s> task <%s>.\n",
-                   tk->proj->name, tk->value);
+                   tk->eng->proj->name, tk->value);
         return -1;
     }
 
-    if (thread_timer_start(tk->timer_inst, launch_threadtimer_executor, tk) != 0) {
+    if (thread_timer_start(tk->timer_inst, launch_threadtimer_executor, executor) != 0) {
         threadpool_stop_and_destroy(&tk->threadpool_inst);
         thread_timer_destroy(&tk->timer_inst);
         etmemd_log(ETMEMD_LOG_ERR, "Timer task start failed for project <%s> task <%s>.\n",
-                   tk->proj->name, tk->value);
+                   tk->eng->proj->name, tk->value);
         return -1;
     }
 
@@ -107,11 +111,11 @@ int start_threadpool_work(struct task *tk)
 void stop_and_delete_threadpool_work(struct task *tk)
 {
     etmemd_log(ETMEMD_LOG_DEBUG, "stop and delete task <%s> of project <%s>\n",
-               tk->value, tk->proj->name);
+               tk->value, tk->eng->proj->name);
 
     if (tk->timer_inst == NULL) {
         etmemd_log(ETMEMD_LOG_DEBUG, "task <%s> of project <%s> has not been started, return\n",
-                   tk->value, tk->proj->name);
+                   tk->value, tk->eng->proj->name);
         return;
     }
 

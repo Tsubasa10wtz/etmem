@@ -60,7 +60,7 @@ int parse_name_string(const char *val, char **name_str, size_t max_len)
 int etmem_parse_check_result(int params_cnt, int argc)
 {
     if (params_cnt > 0 && argc - 1 > params_cnt * 2) {  /* maximum number of args is limited to params_cnt * 2+1 */
-        printf("warn: useless parameters passed in\n");
+        printf("warn: etmem useless parameters passed in\n");
         return -E2BIG;
     }
 
@@ -83,6 +83,22 @@ void free_proj_member(struct mem_proj *proj)
         free(proj->sock_name);
         proj->sock_name = NULL;
     }
+
+    if (proj->eng_name != NULL) {
+        free(proj->eng_name);
+        proj->eng_name = NULL;
+    }
+
+    if (proj->task_name != NULL) {
+        free(proj->task_name);
+        proj->task_name = NULL;
+    }
+
+    if (proj->eng_cmd != NULL) {
+        free(proj->eng_cmd);
+        proj->eng_cmd = NULL;
+    }
+
 }
 
 

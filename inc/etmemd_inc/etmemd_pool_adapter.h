@@ -21,10 +21,15 @@
 #include "etmemd_project.h"
 #include "etmemd_log.h"
 
+struct task_executor {
+    struct task *tk;
+    void *(*func)(void *arg);
+};
+
 /*
  * Start process scanning and memory migration
  * */
-int start_threadpool_work(struct task *tk);
+int start_threadpool_work(struct task_executor *executor);
 
 /*
  * Stop process and cleanup resource of scanning and memory migration

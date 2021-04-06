@@ -20,12 +20,14 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <sys/wait.h>
+#include <sys/sysinfo.h>
 
 #include "securec.h"
 #include "etmemd_log.h"
 #include "etmemd_common.h"
 #include "etmemd_task.h"
 #include "etmemd_engine.h"
+#include "etmemd_file.h"
 
 static int get_pid_through_pipe(char *arg_pid[], const int *pipefd)
 {
@@ -74,7 +76,10 @@ static int get_pid_through_pipe(char *arg_pid[], const int *pipefd)
 
 void free_task_pid_mem(struct task_pid **tk_pid)
 {
-    etmemd_safe_free((void **)(&((*tk_pid)->params)));
+    struct engine *eng = (*tk_pid)->tk->eng;
+    if (eng->ops->free_pid_params != NULL) {
+        eng->ops->free_pid_params(eng, tk_pid);
+    }
     etmemd_safe_free((void **)tk_pid);
 }
 
@@ -91,8 +96,8 @@ static void clean_nouse_pid(struct task_pid **tk_pid)
 
 static struct task_pid *alloc_tkpid_node(unsigned int pid, struct task *tk)
 {
-    int ret;
     struct task_pid *tk_pid = NULL;
+    struct engine *eng = tk->eng;
 
     tk_pid = (struct task_pid *)calloc(1, sizeof(struct task_pid));
     if (tk_pid == NULL) {
@@ -102,8 +107,7 @@ static struct task_pid *alloc_tkpid_node(unsigned int pid, struct task *tk)
     tk_pid->pid = pid;
     tk_pid->tk = tk;
 
-    ret = tk->eng->alloc_params(&tk_pid);
-    if (ret != 0) {
+    if (eng->ops->alloc_pid_params != NULL && eng->ops->alloc_pid_params(eng, &tk_pid) != 0) {
         free(tk_pid);
         return NULL;
     }
@@ -362,6 +366,13 @@ int etmemd_get_task_pids(struct task *tk)
     return 0;
 }
 
+static void clear_task_struct(struct task *task)
+{
+    etmemd_safe_free((void **)&task->type);
+    etmemd_safe_free((void **)&task->value);
+    etmemd_safe_free((void **)&task->name);
+}
+
 void etmemd_free_task_struct(struct task **tk)
 {
     struct task *task = NULL;
@@ -371,36 +382,125 @@ void etmemd_free_task_struct(struct task **tk)
     }
 
     task = *tk;
-    etmemd_safe_free((void **)&task->type);
-    etmemd_safe_free((void **)&task->value);
-
-    if (task->eng != NULL) {
-        etmemd_safe_free((void **)&task->eng->params);
-        etmemd_safe_free((void **)&task->eng->adp);
-        task->eng->task = NULL;
-        etmemd_safe_free((void **)&task->eng);
-        task->eng = NULL;
-    }
-
-    task->proj = NULL;
+    clear_task_struct(task);
     free(task);
     *tk = NULL;
 }
 
-void etmemd_print_tasks(const struct task *tk)
+void etmemd_print_tasks(int fd, const struct task *tk, char *eng_name, bool started)
 {
     const struct task *tmp = tk;
     int i = 1;
 
     while (tmp != NULL) {
-        printf("%-8d %-32s %-32s %-32s %-16s\n",
-               i,
-               tmp->type,
-               tmp->value,
-               etmemd_get_eng_name(tmp->eng->engine_type),
-               tmp->timer_inst == NULL ? "false" : "true");
+        dprintf_all(fd, "%-8d %-8s %-16s %-16s %-16s %-8s\n",
+                    i,
+                    tmp->type,
+                    tmp->value,
+                    tmp->name,
+                    eng_name,
+                    started ? "true" : "false");
 
         tmp = tmp->next;
         i++;
     }
+}
+
+static int fill_task_name(void *obj, void *val)
+{
+    struct task *tk = (struct task *)obj;
+    char *name = (char *)val;
+    tk->name = name;
+    return 0;
+}
+
+static int fill_task_type(void *obj, void *val)
+{
+    struct task *tk = (struct task *)obj;
+    char *type = (char *)val;
+    if (strcmp(val, "pid") != 0 && strcmp(val, "name") != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "invalid task type, must be pid or name.\n");
+        return -1;
+    }
+
+    tk->type = type;
+    return 0;
+}
+
+static int fill_task_value(void *obj, void *val)
+{
+    struct task *tk = (struct task *)obj;
+    char *value = (char *)val;
+    tk->value = value;
+    return 0;
+}
+
+static int fill_task_threads(void *obj, void *val)
+{
+    struct task *tk = (struct task *)obj;
+    int max_threads = parse_to_int(val);
+    int core;
+
+    if (max_threads < 0) {
+        etmemd_log(ETMEMD_LOG_WARN,
+                   "Thread count is abnormal, set the default minimum of current thread count to 1\n");
+        max_threads = 1;
+    }
+
+    core = get_nprocs();
+    /*
+     * For IO intensive bussinesses, max-threads is limited to 2N + 1 of the maximum number
+     * of threads
+     */
+    if (max_threads > 2 * core + 1) {
+        etmemd_log(ETMEMD_LOG_WARN,
+                   "max-threads is limited to 2N+1 of the maximum number of threads\n");
+        max_threads = 2 * core + 1;
+    }
+
+    tk->max_threads = max_threads;
+    return 0;
+}
+
+struct config_item g_task_config_items[] = {
+    {"name", STR_VAL, fill_task_name, false},
+    {"type", STR_VAL, fill_task_type, false},
+    {"value", STR_VAL, fill_task_value, false},
+    {"max_threads", INT_VAL, fill_task_threads, true},
+};
+
+static int task_fill_by_conf(GKeyFile *config, struct task *tk)
+{
+    if (parse_file_config(config, TASK_GROUP, g_task_config_items,
+                          ARRAY_SIZE(g_task_config_items), (void *)tk) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "parse task config fail\n");
+        clear_task_struct(tk);
+        return -1;
+    }
+    return 0;
+}
+
+struct task *etmemd_add_task(GKeyFile *config)
+{
+    struct task *tk = calloc(1, sizeof(struct task));
+
+    if (tk == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "alloc task struct fail\n");
+        return NULL;
+    }
+
+    /* set default count of the thread pool to 1 */
+    tk->max_threads = 1;
+    if (task_fill_by_conf(config, tk) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "fill task from configuration file fail.\n");
+        free(tk);
+        return NULL;
+    }
+    return tk;
+}
+
+void etmemd_remove_task(struct task *tk)
+{
+    clear_task_struct(tk);
+    free(tk);
 }

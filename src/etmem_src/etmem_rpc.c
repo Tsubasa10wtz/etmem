@@ -24,7 +24,7 @@
 #include "securec.h"
 #include "etmem_rpc.h"
 
-#define ETMEM_CLIENT_REGISTER "proj_name %s file_name %s cmd %d"
+#define ETMEM_CLIENT_REGISTER "proj_name %s file_name %s cmd %d eng_name %s eng_cmd %s task_name %s"
 
 #define INT_MAX_LEN 9
 #define ETMEM_RPC_RECV_BUF_LEN 512
@@ -86,6 +86,15 @@ static size_t etmem_client_get_str_len(const struct mem_proj *proj)
     if (proj->file_name != NULL) {
         total_len += strlen(proj->file_name);
     }
+    if (proj->eng_name != NULL) {
+        total_len += strlen(proj->eng_name);
+    }
+    if (proj->eng_cmd != NULL) {
+        total_len += strlen(proj->eng_cmd);
+    }
+    if (proj->task_name != NULL) {
+        total_len += strlen(proj->task_name);
+    }
 
     return total_len;
 }
@@ -108,7 +117,10 @@ static int etmem_client_send(const struct mem_proj *proj, int sockfd)
     if (snprintf_s(reg_cmd, total_len, total_len - 1, ETMEM_CLIENT_REGISTER,
                    proj->proj_name == NULL ? "-" : proj->proj_name,
                    proj->file_name == NULL ? "-" : proj->file_name,
-                   proj->cmd) <= 0) {
+                   proj->cmd,
+                   proj->eng_name == NULL ? "-" : proj->eng_name,
+                   proj->eng_cmd == NULL ? "-" : proj->eng_cmd,
+                   proj->task_name == NULL ? "-" : proj->task_name) <= 0) {
         printf("snprintf_s failed.\n");
         goto EXIT;
     }
@@ -135,16 +147,15 @@ EXIT:
 static bool etmem_recv_find_fail_keyword(const char *recv_msg)
 {
     if (strstr(recv_msg, "error") != NULL) {
-        printf("get rpc error response. %s\n", recv_msg);
         return true;
     }
-
     return false;
 }
 
 static int etmem_client_recv(int sockfd)
 {
-    ssize_t ret;
+    ssize_t recv_size;
+    int ret = -1;
     char *recv_msg = NULL;
     uint8_t *recv_buf = NULL;
     size_t recv_len = ETMEM_RPC_RECV_BUF_LEN;
@@ -155,22 +166,27 @@ static int etmem_client_recv(int sockfd)
         return -1;
     }
 
-    ret = recv(sockfd, recv_buf, recv_len, 0);
-    if (ret < 0) {
-        perror("recv failed:"); 
-        goto EXIT;
-    }
-    if ((unsigned long)ret >= recv_len) {
-        printf("recv too long.\n");
-        ret = -1;
-        goto EXIT;
-    }
+    while (true) {
+        recv_size = recv(sockfd, recv_buf, recv_len - 1, 0);
+        if (recv_size < 0) {
+            perror("recv failed:");
+            goto EXIT;
+        }
+        if (recv_size == 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                printf("recv timeout:\n");
+            }
+            ret = 0;
+            goto EXIT;
+        }
 
-    recv_msg = (char *)recv_buf;
-    recv_msg[recv_len - 1] = '\0';
-    if (etmem_recv_find_fail_keyword(recv_msg)) {
-        ret = 0;
-        goto EXIT;
+        recv_msg = (char *)recv_buf;
+        recv_msg[recv_size] = '\0';
+        printf("%s", recv_msg);
+        if (etmem_recv_find_fail_keyword(recv_msg)) {
+            printf("error occurs when getting response from etmemd server\n");
+            goto EXIT;
+        }
     }
 
 EXIT:
@@ -207,12 +223,6 @@ int etmem_rpc_client(const struct mem_proj *proj)
         ret = -ECOMM;
         goto EXIT;
     }
-    if (ret == 0) {
-        printf("error occurs when getting response from etmemd server.\n");
-        ret = -EPERM;
-        goto EXIT;
-    }
-    ret = 0;
 
 EXIT:
     close(sockfd);

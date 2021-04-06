@@ -17,10 +17,12 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <glib.h>
 
 #include "etmemd.h"
 #include "etmemd_scan.h"
 #include "etmemd_project.h"
+#include "etmemd_engine.h"
 #include "etmemd_common.h"
 #include "etmemd_log.h"
 #include "securec.h"
@@ -30,6 +32,8 @@
 #define PUD_SIZE_SHIFT 30
 #define HEXADECIMAL_RADIX 16
 #define PMD_IDLE_PTES_PARAMETER 512
+#define VMFLAG_MAX_LEN 100
+#define VMFLAG_MAX_NUM 30
 
 static const enum page_type g_page_type_by_idle_kind[] = {
     PTE_TYPE,
@@ -45,11 +49,12 @@ static const enum page_type g_page_type_by_idle_kind[] = {
     PAGE_TYPE_INVAL,
 };
 
-static u_int64_t g_page_size[PAGE_TYPE_INVAL] = {
-    1UL << PTE_SIZE_SHIFT, /* PTE size */
-    1UL << PMD_SIZE_SHIFT, /* PMD size */
-    1UL << PUD_SIZE_SHIFT, /* PUD size */
-};
+static uint64_t g_page_size[PAGE_TYPE_INVAL];
+
+int page_type_to_size(enum page_type type)
+{
+    return g_page_size[type];
+}
 
 static unsigned int get_page_shift(long pagesize)
 {
@@ -260,13 +265,91 @@ exit:
     return NULL;
 }
 
-struct vmas *get_vmas(const char *pid)
+static bool is_vma_with_vmflags(FILE *fp, char *vmflags_array[], int vmflags_num)
+{
+    char parse_line[FILE_LINE_MAX_LEN];
+    size_t len;
+    int i;
+
+    len = strlen(VMFLAG_HEAD);
+    while (fgets(parse_line, FILE_LINE_MAX_LEN - 1, fp) != NULL) {
+        /* skip the line which has no match length */
+        if (strlen(parse_line) <= len) {
+            continue;
+        }
+        if (strncmp(VMFLAG_HEAD, parse_line, len) != 0) {
+            continue;
+        }
+
+        /* check any flag in flags is set */
+        for (i = 0; i < vmflags_num; i++) {
+            if (strstr(parse_line, vmflags_array[i]) == NULL) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    return false;
+}
+
+static bool is_vmflags_match(FILE *fp, char *vmflags_array[], int vmflags_num)
+{
+    if (vmflags_num == 0) {
+        return true;
+    }
+    return is_vma_with_vmflags(fp, vmflags_array, vmflags_num);
+}
+
+static bool is_anon_match(bool is_anon_only, struct vma *vma)
+{
+    if (!is_anon_only) {
+        return true;
+    }
+    return is_anonymous(vma);
+}
+
+int split_vmflags(char ***vmflags_array, char *vmflags)
+{
+    char *flag = NULL;
+    char *saveptr = NULL;
+    char *tmp_array[VMFLAG_MAX_NUM] = {};
+    int vmflags_num = 0;
+    int i;
+
+    for (flag = strtok_r(vmflags, " ", &saveptr); flag != NULL; flag = strtok_r(NULL, " ,", &saveptr)) {
+        tmp_array[vmflags_num++] = flag;
+        if (vmflags_num == VMFLAG_MAX_NUM) {
+            break;
+        }
+    }
+
+    *vmflags_array = malloc(sizeof(char *) * vmflags_num);
+    if (*vmflags_array == NULL) {
+        return -1;
+    }
+
+    for (i = 0; i < vmflags_num; i++) {
+        (*vmflags_array)[i] = tmp_array[i];
+    }
+
+    return vmflags_num;
+}
+
+struct vmas *get_vmas_with_flags(const char *pid, char *vmflags_array[], int vmflags_num, bool is_anon_only)
 {
     struct vmas *ret_vmas = NULL;
     struct vma **tmp_vma = NULL;
     FILE *fp = NULL;
     char maps_line[FILE_LINE_MAX_LEN];
     size_t len;
+    char *maps_file = NULL;
+
+    if (vmflags_num == 0) {
+        maps_file = MAPS_FILE;
+    } else {
+        maps_file = SMAPS_FILE;
+    }
 
     ret_vmas = (struct vmas *)calloc(1, sizeof(struct vmas));
     if (ret_vmas == NULL) {
@@ -274,9 +357,9 @@ struct vmas *get_vmas(const char *pid)
         return NULL;
     }
 
-    fp = etmemd_get_proc_file(pid, MAPS_FILE, "r");
+    fp = etmemd_get_proc_file(pid, maps_file, 0, "r");
     if (fp == NULL) {
-        etmemd_log(ETMEMD_LOG_ERR, "open %s file of %s fail\n", MAPS_FILE, pid);
+        etmemd_log(ETMEMD_LOG_ERR, "open %s file of %s fail\n", maps_file, pid);
         free(ret_vmas);
         return NULL;
     }
@@ -291,21 +374,33 @@ struct vmas *get_vmas(const char *pid)
             ret_vmas = NULL;
             break;
         }
-        tmp_vma = &((*tmp_vma)->next);
-        ret_vmas->vma_cnt++;
 
-        /* if the file path is too long, maps_line cannot read file line completely, clean invalid characters. */
+        /* if the file path is too long, maps_line cannot read file line completely, clean invalid characters */
         while (maps_line[len - 1] != '\n') {
             if (fgets(maps_line, FILE_LINE_MAX_LEN - 1, fp) != NULL) {
                 len = strlen(maps_line);
                 continue;
             }
         }
+
+        /* skip vma without vmflags */
+        if (!is_vmflags_match(fp, vmflags_array, vmflags_num) || !is_anon_match(is_anon_only, *tmp_vma)) {
+            free(*tmp_vma);
+            *tmp_vma = NULL;
+            continue;
+        }
+
+        tmp_vma = &((*tmp_vma)->next);
+        ret_vmas->vma_cnt++;
     }
 
     fclose(fp);
-
     return ret_vmas;
+}
+
+struct vmas *get_vmas(const char *pid)
+{
+    return get_vmas_with_flags(pid, NULL, 0, true);
 }
 
 static u_int64_t get_address_from_buf(const unsigned char *buf, u_int64_t index)
@@ -408,9 +503,9 @@ static struct page_refs **record_parse_result(u_int64_t addr, enum page_idle_typ
     enum page_type page_size_type;
 
     /* ignore unaligned address when walk, because pages handled need to be aligned */
-    if ((addr & (g_page_size[g_page_type_by_idle_kind[type]] - 1)) > 0) {
+    if ((addr & (page_type_to_size(g_page_type_by_idle_kind[type]) - 1)) > 0) {
         etmemd_log(ETMEMD_LOG_WARN, "ignore address %lx which not aligned %lx for type %d\n", addr,
-                   g_page_size[g_page_type_by_idle_kind[type]], type);
+                   page_type_to_size(g_page_type_by_idle_kind[type]), type);
         return pf;
     }
 
@@ -429,7 +524,7 @@ static struct page_refs **record_parse_result(u_int64_t addr, enum page_idle_typ
             break;
         }
 
-        addr += g_page_size[page_size_type];
+        addr += page_type_to_size(page_size_type);
     }
 
     return pf;
@@ -480,23 +575,23 @@ static struct page_refs **parse_vma_result(const unsigned char *buf, u_int64_t s
         } else if (type < PMD_IDLE_PTES) {
             pf = record_parse_result(address, type, nr, pf);
         } else {
-            address = address + (u_int64_t)nr * g_page_size[g_page_type_by_idle_kind[type]];
+            address = address + (u_int64_t)nr * page_type_to_size(g_page_type_by_idle_kind[type]);
             continue;
         }
 
         if (pf == NULL) {
             return NULL;
         }
-        address = address + (u_int64_t)nr * g_page_size[g_page_type_by_idle_kind[type]];
+        address = address + (u_int64_t)nr * page_type_to_size(g_page_type_by_idle_kind[type]);
     }
     *end = address;
     return pf;
 }
 
-static struct page_refs **walk_vmas(int fd,
-                                    struct walk_address *walk_address,
-                                    struct page_refs **pf,
-                                    unsigned long *use_rss)
+struct page_refs **walk_vmas(int fd,
+                             struct walk_address *walk_address,
+                             struct page_refs **pf,
+                             unsigned long *use_rss)
 {
     unsigned char *buf = NULL;
     u_int64_t size;
@@ -504,7 +599,7 @@ static struct page_refs **walk_vmas(int fd,
 
     /* we make the buffer size as fitable as within a vma.
      * because the size of buffer passed to kernel will be calculated again (<< (3 + PAGE_SHIFT)) */
-    size = ((walk_address->walk_end - walk_address->walk_start) >> 3) / g_page_size[PTE_TYPE];
+    size = ((walk_address->walk_end - walk_address->walk_start) >> 3) / page_type_to_size(PTE_TYPE);
 
     /* we need to compare the size to the minimum size that kernel handled */
     size = size < EPT_IDLE_BUF_MIN ? EPT_IDLE_BUF_MIN : size;
@@ -547,7 +642,7 @@ int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **p
     struct page_refs **tmp_page_refs = NULL;
     struct walk_address walk_address = {0, 0, 0};
 
-    scan_fp = etmemd_get_proc_file(pid, IDLE_SCAN_FILE, "r");
+    scan_fp = etmemd_get_proc_file(pid, IDLE_SCAN_FILE, 0, "r");
     if (scan_fp == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "open %s file fail\n", IDLE_SCAN_FILE);
         return -1;
@@ -563,11 +658,6 @@ int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **p
     tmp_page_refs = page_refs;
     for (i = 0; i < vmas->vma_cnt; i++) {
         if (walk_address.last_walk_end > vma->end) {
-            vma = vma->next;
-            continue;
-        }
-
-        if (!(is_anonymous(vma))) {
             vma = vma->next;
             continue;
         }
@@ -630,7 +720,7 @@ struct page_refs *etmemd_do_scan(const struct task_pid *tpid, const struct task 
     }
 
     /* loop for scanning idle_pages to get result of memory access. */
-    for (i = 0; i < tk->proj->loop; i++) {
+    for (i = 0; i < tk->eng->proj->loop; i++) {
         ret = get_page_refs(vmas, pid, &page_refs, NULL);
         if (ret != 0) {
             etmemd_log(ETMEMD_LOG_ERR, "scan operation failed\n");
@@ -639,7 +729,7 @@ struct page_refs *etmemd_do_scan(const struct task_pid *tpid, const struct task 
             page_refs = NULL;
             break;
         }
-        sleep((unsigned)tk->proj->sleep);
+        sleep((unsigned)tk->eng->proj->sleep);
     }
 
     free_vmas(vmas);

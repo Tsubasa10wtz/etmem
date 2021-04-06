@@ -19,6 +19,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define PTE_SIZE_SHIFT 12
+#define PMD_SIZE_SHIFT 21
+#define PUD_SIZE_SHIFT 30
+
 /*
  * page type specified by size
  * */
