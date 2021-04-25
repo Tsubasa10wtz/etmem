@@ -199,7 +199,7 @@ static void slide_stop_task(struct engine *eng, struct task *tk)
     params->executor = NULL;
 }
 
-struct engine_ops slide_eng_ops = {
+struct engine_ops g_slide_eng_ops = {
     .fill_eng_params = NULL,
     .clear_eng_params = NULL,
     .fill_task_params = slide_fill_task,
@@ -213,7 +213,7 @@ struct engine_ops slide_eng_ops = {
 
 int fill_engine_type_slide(struct engine *eng)
 {
-    eng->ops = &slide_eng_ops;
+    eng->ops = &g_slide_eng_ops;
     eng->engine_type = SLIDE_ENGINE;
     eng->name = "slide";
     return 0;

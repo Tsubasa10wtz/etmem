@@ -8,7 +8,7 @@
  * IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR
  * PURPOSE.
  * See the Mulan PSL v2 for more details.
- * Author: louhongxiang
+ * Author: shikemeng
  * Create: 2021-4-19
  * Description: Memigd cslide API.
  ******************************************************************************/
@@ -44,7 +44,9 @@
 #define BATCHSIZE (1 << 16)
 
 #define factory_foreach_working_pid_params(iter, factory) \
-    for ((iter) = (factory)->working_head, next_working_params(&(iter)); (iter) != NULL; (iter) = (iter)->next, next_working_params(&(iter)))
+    for ((iter) = (factory)->working_head, next_working_params(&(iter)); \
+            (iter) != NULL; \
+            (iter) = (iter)->next, next_working_params(&(iter)))
 
 #define factory_foreach_pid_params(iter, factory) \
     for ((iter) = (factory)->working_head; (iter) != NULL; (iter) = (iter)->next)
@@ -184,7 +186,8 @@ struct page_filter {
     void (*flow_cal_func)(struct flow_ctrl *ctrl);
     long long (*flow_move_func)(struct flow_ctrl *ctrl, long long target, int node);
     bool (*flow_enough)(struct flow_ctrl *ctrl);
-    void (*filter_policy)(struct page_filter *filter, struct node_pair *pair, struct count_page_refs *cpf, struct memory_grade *memory_grade);
+    void (*filter_policy)(struct page_filter *filter, struct node_pair *pair,
+            struct count_page_refs *cpf, struct memory_grade *memory_grade);
     struct flow_ctrl *ctrl;
     int count_start;
     int count_end;
@@ -508,7 +511,6 @@ static int add_node_pair(struct node_map *map, int cold_node, int hot_node)
     map->cur_num++;
     return 0;
 }
-
 
 static int init_node_verifier(struct node_verifier *nv, int node_num)
 {
@@ -933,7 +935,8 @@ static bool node_cal_cold_can_move(struct node_ctrl *node_ctrl)
 {
     long long can_move;
 
-    can_move = node_ctrl->quota < node_ctrl->reserve - node_ctrl->free ? node_ctrl->quota : node_ctrl->reserve - node_ctrl->free;
+    can_move = node_ctrl->quota < node_ctrl->reserve - node_ctrl->free ?
+        node_ctrl->quota : node_ctrl->reserve - node_ctrl->free;
     if (can_move > node_ctrl->cold_free) {
         can_move = node_ctrl->cold_free;
     }
@@ -956,7 +959,8 @@ static inline bool node_move_cold(struct node_ctrl *node_ctrl, long long *target
     return cap_cost(&node_ctrl->cold_move_cap, target);
 }
 
-static int init_flow_ctrl(struct flow_ctrl *ctrl, struct sys_mem *sys_mem, struct node_map *node_map, long long quota, long long reserve)
+static int init_flow_ctrl(struct flow_ctrl *ctrl, struct sys_mem *sys_mem, struct node_map *node_map,
+        long long quota, long long reserve)
 {
     struct node_pair *pair = NULL;
     struct node_ctrl *tmp = NULL;
@@ -1114,7 +1118,8 @@ static void do_filter(struct page_filter *filter, struct cslide_eng_params *eng_
     }
 }
 
-static void to_hot_policy(struct page_filter *filter, struct node_pair *pair, struct count_page_refs *cpf, struct memory_grade *memory_grade)
+static void to_hot_policy(struct page_filter *filter, struct node_pair *pair,
+        struct count_page_refs *cpf, struct memory_grade *memory_grade)
 {
     long long can_move;
     struct node_page_refs *npf = &cpf->node_pfs[pair->cold_node];
@@ -1123,7 +1128,8 @@ static void to_hot_policy(struct page_filter *filter, struct node_pair *pair, st
     move_npf_to_list(npf, &memory_grade->hot_pages, can_move);
 }
 
-static void to_cold_policy(struct page_filter *filter, struct node_pair *pair, struct count_page_refs *cpf, struct memory_grade *memory_grade)
+static void to_cold_policy(struct page_filter *filter, struct node_pair *pair,
+        struct count_page_refs *cpf, struct memory_grade *memory_grade)
 {
     long long can_move;
     struct node_page_refs *npf = &cpf->node_pfs[pair->hot_node];
@@ -1376,7 +1382,9 @@ static int cslide_merge_share_vmas(struct cslide_eng_params *eng_params)
 
     vma_pf = g_share_vma_head;
     while (vma_pf != NULL) {
-        for (iter = vma_pf->next, count = 1; iter != NULL && iter->vma->inode == vma_pf->vma->inode; iter = iter->next, count++) {
+        for (iter = vma_pf->next, count = 1;
+                iter != NULL && iter->vma->inode == vma_pf->vma->inode;
+                iter = iter->next, count++) {
             ;
         }
         if (count > 1) {
@@ -1403,7 +1411,8 @@ static int cslide_get_vmas(struct cslide_pid_params *pid_params)
         etmemd_log(ETMEMD_LOG_ERR, "sprintf pid %u fail\n", pid_params->pid);
         return -1;
     }
-    pid_params->vmas = get_vmas_with_flags(pid, task_params->vmflags_array, task_params->vmflags_num, task_params->anon_only);
+    pid_params->vmas = get_vmas_with_flags(pid, task_params->vmflags_array, task_params->vmflags_num,
+            task_params->anon_only);
     if (pid_params->vmas == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "get vmas for %s fail\n", pid);
         return -1;
@@ -2108,7 +2117,8 @@ static int fill_node_pair(void *obj, void *val)
         return ret;
     }
 
-    for (pair = strtok_r(node_pair_str, pair_delim, &saveptr_pair); pair != NULL; pair = strtok_r(NULL, pair_delim, &saveptr_pair)) {
+    for (pair = strtok_r(node_pair_str, pair_delim, &saveptr_pair); pair != NULL;
+            pair = strtok_r(NULL, pair_delim, &saveptr_pair)) {
         hot_node_str = strtok_r(pair, node_delim, &saveptr_node);
         if (hot_node_str == NULL) {
             etmemd_log(ETMEMD_LOG_ERR, "parse hot node failed\n");

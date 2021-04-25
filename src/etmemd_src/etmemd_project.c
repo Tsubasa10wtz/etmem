@@ -132,7 +132,8 @@ static enum opt_result engine_of_group(GKeyFile *config, char *group_name, struc
     return OPT_SUCCESS;
 }
 
-static enum opt_result task_of_group(GKeyFile *config, char *group_name, struct project *proj, struct engine *eng, struct task **tk)
+static enum opt_result task_of_group(GKeyFile *config, char *group_name,
+        struct project *proj, struct engine *eng, struct task **tk)
 {
     char *task_name = NULL;
     char *key = NULL;
@@ -155,7 +156,8 @@ static enum opt_result task_of_group(GKeyFile *config, char *group_name, struct 
     return OPT_SUCCESS;
 }
 
-static enum opt_result get_group_objs(GKeyFile *config, char *group_name, struct project **proj, struct engine **eng, struct task **tk)
+static enum opt_result get_group_objs(GKeyFile *config, char *group_name,
+        struct project **proj, struct engine **eng, struct task **tk)
 {
     enum opt_result ret;
 
@@ -682,7 +684,8 @@ enum opt_result etmemd_migrate_stop(const char *project_name)
     return OPT_SUCCESS;
 }
 
-enum opt_result etmemd_project_mgt_engine(const char *project_name, const char *eng_name, char *cmd, char *task_name, int sock_fd)
+enum opt_result etmemd_project_mgt_engine(const char *project_name, const char *eng_name, char *cmd, char *task_name,
+        int sock_fd)
 {
     struct engine *eng = NULL;
     struct project *proj = NULL;

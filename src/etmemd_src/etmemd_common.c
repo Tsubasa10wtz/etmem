@@ -403,12 +403,14 @@ int dprintf_all(int fd, const char *format, ...)
     ret = vsprintf_s(line, FILE_LINE_MAX_LEN, format, args_in);
     if (ret > FILE_LINE_MAX_LEN) {
         etmemd_log(ETMEMD_LOG_ERR, "fprintf_all fail as truncated.\n");
+        va_end(args_in);
         return -1;
     }
 
     ret = write_all(fd, line);
     if (ret < 0) {
         etmemd_log(ETMEMD_LOG_ERR, "write_all fail.\n");
+        va_end(args_in);
         return -1;
     }
 

@@ -36,7 +36,7 @@ int parse_name_string(const char *val, char **name_str, size_t max_len)
         return -EINVAL;
     }
     if (len > max_len) {
-        printf("string is too long, it should not be larger than %lu\n", max_len);
+        printf("string is too long, it should not be larger than %zu\n", max_len);
         return -ENAMETOOLONG;
     }
 

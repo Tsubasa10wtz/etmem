@@ -121,7 +121,7 @@ static enum opt_result do_obj_cmd(GKeyFile *config, struct obj_cmd_item *items, 
     return OPT_SUCCESS;
 }
 
-struct obj_cmd_item obj_add_items[] = {
+struct obj_cmd_item g_obj_add_items[] = {
     {PROJ_GROUP, etmemd_project_add},
     {ENG_GROUP, etmemd_project_add_engine},
     {TASK_GROUP, etmemd_project_add_task},
@@ -129,7 +129,7 @@ struct obj_cmd_item obj_add_items[] = {
 
 static enum opt_result do_obj_add(GKeyFile *config)
 {
-    return do_obj_cmd(config, obj_add_items, ARRAY_SIZE(obj_add_items));
+    return do_obj_cmd(config, g_obj_add_items, ARRAY_SIZE(g_obj_add_items));
 }
 
 static struct obj_cmd_item obj_remove_items[] = {

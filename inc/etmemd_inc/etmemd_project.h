@@ -102,7 +102,8 @@ enum opt_result etmemd_migrate_start(const char *project_name);
   * */
 enum opt_result etmemd_migrate_stop(const char *project_name);
 
-enum opt_result etmemd_project_mgt_engine(const char *project_name, const char *eng_name, char *cmd, char *task_name, int sock_fd);
+enum opt_result etmemd_project_mgt_engine(const char *project_name, const char *eng_name, char *cmd, char *task_name,
+        int sock_fd);
 enum opt_result etmemd_project_add_engine(GKeyFile *config);
 enum opt_result etmemd_project_remove_engine(GKeyFile *config);
 enum opt_result etmemd_project_add_task(GKeyFile *config);
