@@ -194,17 +194,10 @@ struct page_filter {
     int count_step;
 };
 
-struct page_offset {
-    struct page_refs *page_refs;
-    uint64_t to_offset;
-};
-
 struct cslide_cmd_item {
     char *name;
     int (*func)(void *params, int fd);
 };
-
-struct vma_pf *g_share_vma_head = NULL;
 
 static inline int get_node_num(void)
 {
@@ -1215,191 +1208,6 @@ static int cslide_policy(struct cslide_eng_params *eng_params)
     return 0;
 }
 
-static void sort_add_vma_pf(struct vma_pf *vma_pf)
-{
-    struct vma_pf **iter = &g_share_vma_head;
-
-    for (; *iter != NULL && (*iter)->vma->inode < vma_pf->vma->inode; iter = &((*iter)->next)) {
-        ;
-    }
-
-    vma_pf->next = *iter;
-    *iter = vma_pf;
-}
-
-static bool is_share(struct vma_pf *vma_pf)
-{
-    struct vma *vma = vma_pf->vma;
-
-    if (vma->inode != 0 && vma->stat[VMA_STAT_MAY_SHARE]) {
-        return true;
-    }
-
-    return false;
-}
-
-static inline uint64_t to_offset(struct page_offset *po)
-{
-    return po->page_refs->addr + po->to_offset;
-}
-
-static int page_offset_cmp(const void *a, const void *b)
-{
-    struct page_offset *l = (struct page_offset *)a;
-    struct page_offset *r = (struct page_offset *)b;
-
-    return to_offset(l) - to_offset(r);
-}
-
-static inline void init_merge_po(struct page_offset *to_merge_po, int count)
-{
-    qsort(to_merge_po, count, sizeof(struct page_offset), page_offset_cmp);
-}
-
-static void next_po(struct page_offset *to_merge_po, int *count)
-{
-    struct page_offset *po = to_merge_po;
-    struct page_offset tmp;
-    uint64_t offset;
-    int i;
-
-    po->page_refs = po->page_refs->next;
-    if (po->page_refs == NULL) {
-        for (i = 1; i < *count; i++) {
-            to_merge_po[i - 1] = to_merge_po[i];
-        }
-        (*count)--;
-        return;
-    }
-
-    tmp = *po;
-    offset = to_offset(po);
-    for (i = 1; i < *count; i++) {
-        if (to_offset(&to_merge_po[i]) >= offset) {
-            break;
-        }
-        to_merge_po[i - 1] = to_merge_po[i];
-    }
-    to_merge_po[i - 1] = tmp;
-}
-
-static void merge_share_pfs(struct page_refs **share_pfs, int share_pfs_num)
-{
-    int max_count = -1;
-    struct page_refs *max_pf = NULL;
-    int i;
-
-    /* only keep one page_refs with max count */
-    for (i = 0; i < share_pfs_num; i++) {
-        if (share_pfs[i]->count > max_count) {
-            max_pf = share_pfs[i];
-            max_count = share_pfs[i]->count;
-        }
-        share_pfs[i]->count = -1;
-    }
-    max_pf->count = max_count;
-}
-
-static int do_merge_vma_pf(struct vma_pf *vma_pf, int count)
-{
-    struct page_refs **share_pfs = NULL;
-    struct page_offset *to_merge_po = NULL;
-    struct page_offset *iter = NULL;
-    int share_pfs_num;
-    uint64_t cur_offset = 0;
-    uint64_t next_offset;
-    int i;
-
-    share_pfs = calloc(count, sizeof(struct page_refs *));
-    if (share_pfs == NULL) {
-        etmemd_log(ETMEMD_LOG_ERR, "alloc share_pfs fail\n");
-        return -1;
-    }
-
-    to_merge_po = calloc(count, sizeof(struct page_offset));
-    if (to_merge_po == NULL) {
-        etmemd_log(ETMEMD_LOG_ERR, "alloc iter_pfs fail\n");
-        free(share_pfs);
-        return -1;
-    }
-
-    for (i = 0; i < count; i++) {
-        to_merge_po[i].page_refs = vma_pf->page_refs;
-        to_merge_po[i].to_offset = vma_pf->vma->offset - vma_pf->vma->start;
-        vma_pf = vma_pf->next;
-    }
-
-    init_merge_po(to_merge_po, count);
-    iter = to_merge_po;
-    share_pfs[0] = iter->page_refs;
-    share_pfs_num = 1;
-    cur_offset = to_offset(iter);
-
-    for (next_po(to_merge_po, &count); count > 0; next_po(to_merge_po, &count)) {
-        iter = to_merge_po;
-        next_offset = to_offset(iter);
-        if (next_offset == cur_offset) {
-            share_pfs[share_pfs_num] = iter->page_refs;
-            share_pfs_num++;
-        } else {
-            if (share_pfs_num > 1) {
-                merge_share_pfs(share_pfs, share_pfs_num);
-            }
-            share_pfs[0] = iter->page_refs;
-            share_pfs_num = 1;
-            cur_offset = next_offset;
-        }
-
-    }
-    if (share_pfs_num > 1) {
-        merge_share_pfs(share_pfs, share_pfs_num);
-    }
-
-    free(to_merge_po);
-    free(share_pfs);
-    return 0;
-}
-
-static int cslide_merge_share_vmas(struct cslide_eng_params *eng_params)
-{
-    struct cslide_pid_params *pid_params = NULL;
-    struct vma_pf *vma_pf = NULL;
-    struct vma_pf *iter = NULL;
-    int count;
-    uint64_t i;
-    
-    factory_foreach_working_pid_params(pid_params, &eng_params->factory) {
-        vma_pf = pid_params->vma_pf;
-        if (vma_pf == NULL) {
-            continue;
-        }
-        for (i = 0; i < pid_params->vmas->vma_cnt; i++) {
-            if (is_share(&vma_pf[i])) {
-                sort_add_vma_pf(&vma_pf[i]);
-            }
-        }
-    }
-
-    vma_pf = g_share_vma_head;
-    while (vma_pf != NULL) {
-        for (iter = vma_pf->next, count = 1;
-                iter != NULL && iter->vma->inode == vma_pf->vma->inode;
-                iter = iter->next, count++) {
-            ;
-        }
-        if (count > 1) {
-            if (do_merge_vma_pf(vma_pf, count) != 0) {
-                etmemd_log(ETMEMD_LOG_ERR, "merge vma with inode %lld fail\n", vma_pf->vma->inode);
-                g_share_vma_head = NULL;
-                return -1;
-            }
-        }
-        vma_pf = iter;
-    }
-    g_share_vma_head = NULL;
-    return 0;
-}
-
 static int cslide_get_vmas(struct cslide_pid_params *pid_params)
 {
     struct cslide_task_params *task_params = pid_params->task_params;
@@ -1523,11 +1331,6 @@ static int cslide_do_scan(struct cslide_eng_params *eng_params)
             }
         }
         sleep(eng_params->sleep);
-    }
-
-    if (cslide_merge_share_vmas(eng_params) != 0) {
-        etmemd_log(ETMEMD_LOG_ERR, "cslide merge share vams fail\n");
-        return -1;
     }
 
     return 0;
