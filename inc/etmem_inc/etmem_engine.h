@@ -10,34 +10,11 @@
  * See the Mulan PSL v2 for more details.
  * Author: louhongxiang
  * Create: 2019-12-10
- * Description: This is a header file of the function declaration for common functions
- *              and the data structure definition for etmem project.
+ * Description: This is a header file of the data structure definition for etmem engine function.
  ******************************************************************************/
 
-#ifndef __ETMEM_COMMON_H__
-#define __ETMEM_COMMON_H__
-
-#include <stdint.h>
-#include "etmem.h"
-
-#define PROJECT_NAME_MAX_LEN 32
-#define FILE_NAME_MAX_LEN    256
-#define SOCKET_NAME_MAX_LEN  107
-
-#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
-
-struct mem_proj {
-    etmem_cmd cmd;
-    char *proj_name;
-    char *eng_name;
-    char *task_name;
-    char *file_name;
-    char *sock_name;
-    char *eng_cmd;
-};
-
-int parse_name_string(const char *val, char **name_str, size_t max_len);
-int etmem_parse_check_result(int params_cnt, int argc);
-void free_proj_member(struct mem_proj *proj);
-
+#ifndef __ETMEM_ENGINE_H__
+#define __ETMEM_ENGINE_H__
+void engine_init(void);
+void engine_exit(void);
 #endif

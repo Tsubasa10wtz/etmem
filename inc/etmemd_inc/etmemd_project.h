@@ -18,6 +18,7 @@
 
 #include <sys/queue.h>
 #include "etmemd_task.h"
+#include "etmemd_engine.h"
 
 /* set the length of project name to 32 */
 #define PROJECT_NAME_MAX_LEN  32
@@ -25,12 +26,12 @@
 #define PROJECT_SHOW_COLM_MAX 128
 
 struct project {
-    bool start;
+    char *name;
     int interval;
     int loop;
     int sleep;
-    char *name;
-    struct task *tasks;
+    bool start;
+    struct engine *engs;
 
     SLIST_ENTRY(project) entry;
 };
@@ -42,6 +43,10 @@ enum opt_result {
     OPT_PRO_STARTED,
     OPT_PRO_STOPPED,
     OPT_PRO_NOEXIST,
+    OPT_ENG_EXISTED,
+    OPT_ENG_NOEXIST,
+    OPT_TASK_EXISTED,
+    OPT_TASK_NOEXIST,
     OPT_INTER_ERR,
     OPT_RET_END,
 };
@@ -49,32 +54,33 @@ enum opt_result {
 /*
  * function: Add project to etmem server.
  *
- * in:  const char *project_name - name of the project to be added
- *      const char *file_name    - name of the project configuration file
+ * in:  GKeyFile *config - loaded config file
  *
- * out: OPT_SUCCESS(0)  - successed to add project
- *      other value     - failed to add project
+ * out: OPT_SUCCESS(0)   - successed to add project
+ *      other value      - failed to add project
  * */
-enum opt_result etmemd_project_add(const char *project_name, const char *file_name);
+enum opt_result etmemd_project_add(GKeyFile *config);
 
 /*
- * function: Delete given project.
+ * function: Remove given project.
  *
- * in:  const char *project_name - name of the project to be deleted
+ * in:  GKeyFile *config - loaded config file
  *
- * out: OPT_SUCCESS(0)  - successed to delete project
- *      other value     - failed to delete project
+ * out: OPT_SUCCESS(0)   - successed to delete project
+ *      other value      - failed to delete project
  * */
-enum opt_result etmemd_project_delete(const char *project_name);
+enum opt_result etmemd_project_remove(GKeyFile *config);
 
 /*
  * function: Show all the projects.
  *
+ * in:  const char *project_name - name of the project to start migrate
+ *      int fd                   - client socket to show projects info
  *
  * out: OPT_SUCCESS(0)  - successed to show all the projects
  *      other value     - failed to show any project
  * */
-enum opt_result etmemd_project_show(void);
+enum opt_result etmemd_project_show(const char *project_name, int fd);
 
  /*
   * function: Start migrate in given project.
@@ -95,6 +101,13 @@ enum opt_result etmemd_migrate_start(const char *project_name);
   *      other value     - failed to stop migrate
   * */
 enum opt_result etmemd_migrate_stop(const char *project_name);
+
+enum opt_result etmemd_project_mgt_engine(const char *project_name, const char *eng_name, char *cmd, char *task_name,
+        int sock_fd);
+enum opt_result etmemd_project_add_engine(GKeyFile *config);
+enum opt_result etmemd_project_remove_engine(GKeyFile *config);
+enum opt_result etmemd_project_add_task(GKeyFile *config);
+enum opt_result etmemd_project_remove_task(GKeyFile *config);
 
 void etmemd_stop_all_projects(void);
 

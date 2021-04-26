@@ -32,6 +32,7 @@ set(ETMEMD_SRC
  ${ETMEMD_SRC_DIR}/etmemd_project.c
  ${ETMEMD_SRC_DIR}/etmemd_engine.c
  ${ETMEMD_SRC_DIR}/etmemd_slide.c
+ ${ETMEMD_SRC_DIR}/etmemd_cslide.c
  ${ETMEMD_SRC_DIR}/etmemd_task.c
  ${ETMEMD_SRC_DIR}/etmemd_scan.c
  ${ETMEMD_SRC_DIR}/etmemd_threadpool.c
@@ -42,7 +43,8 @@ set(ETMEMD_SRC
 set(ETMEM_SRC
  ${ETMEM_SRC_DIR}/etmem.c
  ${ETMEM_SRC_DIR}/etmem_project.c
- ${ETMEM_SRC_DIR}/etmem_task.c
+ ${ETMEM_SRC_DIR}/etmem_obj.c
+ ${ETMEM_SRC_DIR}/etmem_engine.c
  ${ETMEM_SRC_DIR}/etmem_rpc.c
  ${ETMEM_SRC_DIR}/etmem_common.c)
 
@@ -54,8 +56,12 @@ add_executable(etmem
 
 set(EXECUTABLE_OUTPUT_PATH ${BUILD_DIR}/bin)
 
+include(FindPkgConfig)
+pkg_search_module(GLIB2 REQUIRED glib-2.0)
+
 target_include_directories(etmemd PRIVATE
- ${PROJECT_SOURCE_DIR}/inc/etmemd_inc)
+ ${PROJECT_SOURCE_DIR}/inc/etmemd_inc
+ ${GLIB2_INCLUDE_DIRS})
 
 target_include_directories(etmem PRIVATE
  ${PROJECT_SOURCE_DIR}/inc/etmem_inc)
@@ -68,7 +74,7 @@ if(CONFIG_DEBUG STREQUAL "y")
 endif()
 
 set_target_properties(etmemd PROPERTIES LINK_FLAGS "-s -fPIE -pie -fPIC -Wl,-z,relro,-z,now,-z,noexecstack -Wtrampolines")
-target_link_libraries(etmemd PRIVATE pthread dl rt boundscheck)
+target_link_libraries(etmemd PRIVATE pthread dl rt boundscheck numa ${GLIB2_LIBRARIES})
 
 if( ${ARCHITECTURE} STREQUAL "aarch64" )
  target_compile_options(etmemd PRIVATE -march=armv8-a)

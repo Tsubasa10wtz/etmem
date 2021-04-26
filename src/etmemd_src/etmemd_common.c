@@ -21,6 +21,9 @@
 #include <pthread.h>
 #include <sys/time.h>
 #include <ctype.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "securec.h"
 #include "etmemd_common.h"
@@ -214,9 +217,10 @@ static char *etmemd_get_proc_file_str(const char *pid, const char *file)
     return file_name;
 }
 
-FILE *etmemd_get_proc_file(const char *pid, const char *file, const char *mode)
+FILE *etmemd_get_proc_file(const char *pid, const char *file, int flags, const char *mode)
 {
     char *file_name = NULL;
+    int fd = -1;
     FILE *fp = NULL;
 
     file_name = etmemd_get_proc_file_str(pid, file);
@@ -224,7 +228,14 @@ FILE *etmemd_get_proc_file(const char *pid, const char *file, const char *mode)
         return NULL;
     }
 
-    fp = fopen(file_name, mode);
+    fd = open(file_name, flags);
+    if (fd < 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "open file %s fail\n", file_name);
+        goto free_file_name;
+    }
+    fp = fdopen(fd, mode);
+
+free_file_name:
     free(file_name);
     return fp;
 }
@@ -365,4 +376,44 @@ char *skip_blank_line(FILE *file)
     }
 
     return get_line;
+}
+
+static int write_all(int fd, const char *buf)
+{
+    ssize_t rest = strlen(buf);
+    ssize_t send_size;
+
+    while (rest > 0) {
+        send_size = write(fd, buf, rest);
+        if (send_size < 0) {
+            return -1;
+        }
+        rest -= send_size;
+    }
+    return 0;
+}
+
+int dprintf_all(int fd, const char *format, ...)
+{
+    char line[FILE_LINE_MAX_LEN];
+    int ret;
+    va_list args_in;
+
+    va_start(args_in, format);
+    ret = vsprintf_s(line, FILE_LINE_MAX_LEN, format, args_in);
+    if (ret > FILE_LINE_MAX_LEN) {
+        etmemd_log(ETMEMD_LOG_ERR, "fprintf_all fail as truncated.\n");
+        va_end(args_in);
+        return -1;
+    }
+
+    ret = write_all(fd, line);
+    if (ret < 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "write_all fail.\n");
+        va_end(args_in);
+        return -1;
+    }
+
+    va_end(args_in);
+    return 0;
 }

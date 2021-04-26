@@ -16,6 +16,7 @@
 #ifndef ETMEMD_SCAN_H
 #define ETMEMD_SCAN_H
 
+#include <fcntl.h>
 #include "etmemd.h"
 #include "etmemd_task.h"
 
@@ -30,6 +31,11 @@
 
 #define MAPS_FILE               "/maps"
 #define IDLE_SCAN_FILE          "/idle_pages"
+
+#define SMAPS_FILE              "/smaps"
+#define VMFLAG_HEAD             "VmFlags"
+
+#define SCAN_AS_HUGE            O_LARGEFILE
 
 enum {
     VMA_STAT_READ = 0,
@@ -100,8 +106,11 @@ struct page_refs *etmemd_do_scan(const struct task_pid *tpid, const struct task 
 /* free vma list struct */
 void free_vmas(struct vmas *vmas);
 
+struct page_refs **walk_vmas(int fd, struct walk_address *walk_address, struct page_refs **pf, unsigned long *use_rss);
 int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **page_refs, unsigned long *use_rss);
 
+int split_vmflags(char ***vmflags_array, char *vmflags);
+struct vmas *get_vmas_with_flags(const char *pid, char **vmflags_array, int vmflags_num, bool is_anon_only);
 struct vmas *get_vmas(const char *pid);
 
 void clean_page_refs_unexpected(void *arg);
@@ -110,4 +119,5 @@ void clean_memory_grade_unexpected(void *arg);
 
 struct page_refs *add_page_refs_into_memory_grade(struct page_refs *page_refs, struct page_refs **list);
 int init_g_page_size(void);
+int page_type_to_size(enum page_type type);
 #endif

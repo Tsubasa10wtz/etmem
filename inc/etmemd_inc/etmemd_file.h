@@ -17,23 +17,31 @@
 #define ETMEMD_FILE_H
 
 #include <stdio.h>
+#include <glib.h>
 #include "etmemd_project.h"
 #include "etmemd_task.h"
 
-struct project_item {
-    char *proj_sec_name;
-    int (*fill_proj_func)(struct project *proj, const char *val);
-    bool optional;
-    bool set;
+#define PROJ_GROUP "project"
+#define ENG_GROUP  "engine"
+#define TASK_GROUP "task"
+
+enum val_type {
+    INT_VAL,
+    STR_VAL,
 };
 
-struct task_item {
-    char *task_sec_name;
-    int (*fill_task_func)(struct task *tk, const char *val);
-    bool optional;
-    bool set;
+struct config_item {
+    char *key;
+    enum val_type type;
+    int (*fill)(void *obj, void *val);
+    bool option;
 };
 
-int etmemd_fill_proj_by_conf(struct project *proj, FILE *conf_file);
+int parse_file_config(GKeyFile *config, char *group_name, struct config_item *items, unsigned n, void *obj);
+
+static inline int parse_to_int(void *val)
+{
+    return (int)(long long)val;
+}
 
 #endif

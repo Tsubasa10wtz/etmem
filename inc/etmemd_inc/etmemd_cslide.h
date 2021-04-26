@@ -10,13 +10,14 @@
  * See the Mulan PSL v2 for more details.
  * Author: louhongxiang
  * Create: 2019-12-10
- * Description: This is a header file of the function declaration for migration functions.
+ * Description: This is a header file of the function declaration for cslide function.
  ******************************************************************************/
 
-#ifndef __ETMEM_TASK_H__
-#define __ETMEM_TASK_H__
+#ifndef ETMEMD_CSLIDE_H
+#define ETMEMD_CSLIDE_H
 
-void migrate_init(void);
-void migrate_exit(void);
+#include "etmemd_engine.h"
+
+int fill_engine_type_cslide(struct engine *eng);
 
 #endif

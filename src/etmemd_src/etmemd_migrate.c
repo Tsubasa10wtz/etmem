@@ -69,7 +69,7 @@ static int etmemd_migrate_mem(const char *pid, const char *grade_path, struct pa
         return 0;
     }
 
-    fp = etmemd_get_proc_file(pid, grade_path, "r+");
+    fp = etmemd_get_proc_file(pid, grade_path, 0, "r+");
     if (fp == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "cannot open %s for pid %s\n", grade_path, pid);
         return -1;
