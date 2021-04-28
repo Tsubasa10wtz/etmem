@@ -1281,7 +1281,6 @@ static int cslide_scan_vmas(struct cslide_pid_params *params)
     scan_fp = etmemd_get_proc_file(pid, IDLE_SCAN_FILE, SCAN_AS_HUGE, "r");
     if (scan_fp == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "open %s file for pid %u fail\n", IDLE_SCAN_FILE, params->pid);
-        params->vma_pf = NULL;
         return -1;
     }
 
@@ -1298,7 +1297,6 @@ static int cslide_scan_vmas(struct cslide_pid_params *params)
         walk_address.walk_end = vma->end;
         if (walk_vmas(fd, &walk_address, &vma_pf->page_refs, NULL) == NULL) {
             etmemd_log(ETMEMD_LOG_ERR, "scan vma start %llu end %llu fail\n", vma->start, vma->end);
-            cslide_free_vmas(params);
             fclose(scan_fp);
             return -1;
         }
@@ -1308,6 +1306,8 @@ static int cslide_scan_vmas(struct cslide_pid_params *params)
     return 0;
 }
 
+// allocted data will be cleaned in cslide_main->cslide_clean_params
+// ->cslide_free_vmas
 static int cslide_do_scan(struct cslide_eng_params *eng_params)
 {
     struct cslide_pid_params *iter = NULL;
@@ -1531,7 +1531,9 @@ static void cslide_clean_params(struct cslide_eng_params *eng_params)
     struct cslide_pid_params *iter = NULL;
 
     factory_foreach_pid_params(iter, &eng_params->factory) {
+        // clean memory allocted in cslide_policy
         clean_pid_param(iter);
+        // clean memory allocted in cslide_do_scan
         cslide_free_vmas(iter);
     }
 }
