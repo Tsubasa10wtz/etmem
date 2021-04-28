@@ -20,43 +20,6 @@
 #include "securec.h"
 #include "etmem_common.h"
 
-int parse_name_string(const char *val, char **name_str, size_t max_len)
-{
-    size_t len;
-    int ret;
-
-    if (val == NULL) {
-        printf("name string should not be NULL\n");
-        return -EINVAL;
-    }
-                
-    len = strlen(val) + 1;
-    if (len == 1) {
-        printf("name string should not be empty\n");
-        return -EINVAL;
-    }
-    if (len > max_len) {
-        printf("string is too long, it should not be larger than %zu\n", max_len);
-        return -ENAMETOOLONG;
-    }
-
-    *name_str = (char *)calloc(len, sizeof(char));
-    if (*name_str == NULL) {
-        printf("malloc project name failed.\n");
-        return -ENOMEM;
-    }
-
-    ret = strncpy_s(*name_str, len, val, len - 1);
-    if (ret != EOK) {
-        printf("strncpy_s project name failed.\n");
-        free(*name_str);
-        *name_str = NULL;
-        return ret;
-    }
-
-    return 0;
-}
-
 int etmem_parse_check_result(int params_cnt, int argc)
 {
     if (params_cnt > 0 && argc - 1 > params_cnt * 2) {  /* maximum number of args is limited to params_cnt * 2+1 */
@@ -66,39 +29,3 @@ int etmem_parse_check_result(int params_cnt, int argc)
 
     return 0;
 }
-
-void free_proj_member(struct mem_proj *proj)
-{
-    if (proj->proj_name != NULL) {
-        free(proj->proj_name);
-        proj->proj_name = NULL;
-    }
-
-    if (proj->file_name != NULL) {
-        free(proj->file_name);
-        proj->file_name = NULL;
-    }
-
-    if (proj->sock_name != NULL) {
-        free(proj->sock_name);
-        proj->sock_name = NULL;
-    }
-
-    if (proj->eng_name != NULL) {
-        free(proj->eng_name);
-        proj->eng_name = NULL;
-    }
-
-    if (proj->task_name != NULL) {
-        free(proj->task_name);
-        proj->task_name = NULL;
-    }
-
-    if (proj->eng_cmd != NULL) {
-        free(proj->eng_cmd);
-        proj->eng_cmd = NULL;
-    }
-
-}
-
-

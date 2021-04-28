@@ -36,8 +36,6 @@ struct mem_proj {
     char *eng_cmd;
 };
 
-int parse_name_string(const char *val, char **name_str, size_t max_len);
 int etmem_parse_check_result(int params_cnt, int argc);
-void free_proj_member(struct mem_proj *proj);
 
 #endif

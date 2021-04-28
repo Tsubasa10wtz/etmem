@@ -61,34 +61,6 @@ static int obj_parse_cmd(struct etmem_conf *conf, struct mem_proj *proj)
     return -1;
 }
 
-static int parse_file_name(const char *val, char **file_name)
-{
-    size_t len;
-    int ret;
-
-    len = strlen(val) + 1;
-    if (len > FILE_NAME_MAX_LEN) {
-        printf("file name is too long, should not be larger than %u\n", FILE_NAME_MAX_LEN);
-        return -ENAMETOOLONG;
-    }
-
-    *file_name = (char *)calloc(len, sizeof(char));
-    if (*file_name == NULL) {
-        printf("malloc file name failed\n");
-        return -ENOMEM;
-    }
-
-    ret = strncpy_s(*file_name, len, val, len - 1);
-    if (ret != EOK) {
-        printf("strncpy_s file name fail\n");
-        free(*file_name);
-        *file_name = NULL;
-        return ret;
-    }
-
-    return 0;
-}
-
 static int obj_parse_args(struct etmem_conf *conf, struct mem_proj *proj)
 {
     int opt, ret;
@@ -102,18 +74,10 @@ static int obj_parse_args(struct etmem_conf *conf, struct mem_proj *proj)
     while ((opt = getopt_long(conf->argc, conf->argv, "f:s:", opts, NULL)) != -1) {
         switch (opt) {
             case 'f':
-                ret = parse_file_name(optarg, &proj->file_name);
-                if (ret != 0) {
-                    printf("parse file name failed\n");
-                    return ret;
-                }
+                proj->file_name = optarg;
                 break;
             case 's':
-                ret = parse_name_string(optarg, &proj->sock_name, SOCKET_NAME_MAX_LEN);
-                if (ret != 0) {
-                    printf("parse socket name failed.\n");
-                    return ret;
-                }
+                proj->sock_name = optarg;
                 break;
             case '?':
                 /* fallthrough */
@@ -164,19 +128,17 @@ static int obj_do_cmd(struct etmem_conf *conf)
     ret = obj_parse_args(conf, &proj);
     if (ret != 0) {
         printf("obj_parse_args fail\n");
-        goto EXIT;
+        return ret;
     }
 
     ret = obj_check_params(&proj);
     if (ret != 0) {
         printf("obj_check_params fail\n");
-        goto EXIT;
+        return ret;
     }
 
     ret = etmem_rpc_client(&proj);
 
-EXIT:
-    free_proj_member(&proj);
     return ret;
 }
 
