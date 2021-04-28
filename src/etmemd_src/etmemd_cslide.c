@@ -1184,7 +1184,7 @@ static void move_cold_pages(struct cslide_eng_params *eng_params, struct flow_ct
     do_filter(&filter, eng_params);
 }
 
-static void cslide_filter_pfs(struct cslide_eng_params *eng_params)
+static int cslide_filter_pfs(struct cslide_eng_params *eng_params)
 {
     struct flow_ctrl ctrl;
     long long quota = (long long)eng_params->mig_quota * HUGE_1M_SIZE;
@@ -1192,7 +1192,7 @@ static void cslide_filter_pfs(struct cslide_eng_params *eng_params)
 
     if (init_flow_ctrl(&ctrl, &eng_params->mem, &eng_params->node_map, quota, reserve) != 0) {
         etmemd_log(ETMEMD_LOG_ERR, "init_flow_ctrl fail\n");
-        return;
+        return -1;
     }
 
     move_hot_pages(eng_params, &ctrl);
@@ -1200,6 +1200,7 @@ static void cslide_filter_pfs(struct cslide_eng_params *eng_params)
     move_cold_pages(eng_params, &ctrl);
 
     destroy_flow_ctrl(&ctrl);
+    return 0;
 }
 
 static int cslide_policy(struct cslide_eng_params *eng_params)
@@ -1215,8 +1216,7 @@ static int cslide_policy(struct cslide_eng_params *eng_params)
         }
     }
 
-    cslide_filter_pfs(eng_params);
-    return 0;
+    return cslide_filter_pfs(eng_params);
 }
 
 static int cslide_get_vmas(struct cslide_pid_params *pid_params)
@@ -1225,6 +1225,7 @@ static int cslide_get_vmas(struct cslide_pid_params *pid_params)
     struct vma *vma = NULL;
     char pid[PID_STR_MAX_LEN] = {0};
     uint64_t i;
+    int ret = -1;
 
     if (snprintf_s(pid, PID_STR_MAX_LEN, PID_STR_MAX_LEN - 1, "%u", pid_params->pid) <= 0) {
         etmemd_log(ETMEMD_LOG_ERR, "sprintf pid %u fail\n", pid_params->pid);
@@ -1235,6 +1236,13 @@ static int cslide_get_vmas(struct cslide_pid_params *pid_params)
     if (pid_params->vmas == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "get vmas for %s fail\n", pid);
         return -1;
+    }
+    // avoid calloc for vma_pf with size 0 below
+    // return success as vma may be created later
+    if (pid_params->vmas->vma_cnt == 0) {
+        etmemd_log(ETMEMD_LOG_WARN, "no vma detect for %s\n", pid);
+        ret = 0;
+        goto free_vmas;
     }
 
     pid_params->vma_pf = calloc(pid_params->vmas->vma_cnt, sizeof(struct vma_pf));
@@ -1253,7 +1261,7 @@ static int cslide_get_vmas(struct cslide_pid_params *pid_params)
 free_vmas:
     free_vmas(pid_params->vmas);
     pid_params->vmas = NULL;
-    return -1;
+    return ret;
 }
 
 static void cslide_free_vmas(struct cslide_pid_params *params)
@@ -1327,7 +1335,7 @@ static int cslide_do_scan(struct cslide_eng_params *eng_params)
     factory_foreach_working_pid_params(iter, &eng_params->factory) {
         if (cslide_get_vmas(iter) != 0) {
             etmemd_log(ETMEMD_LOG_ERR, "cslide get vmas fail\n");
-            continue;
+            return -1;
         }
     }
 
@@ -1338,7 +1346,7 @@ static int cslide_do_scan(struct cslide_eng_params *eng_params)
             }
             if (cslide_scan_vmas(iter) != 0) {
                 etmemd_log(ETMEMD_LOG_ERR, "cslide scan vmas fail\n");
-                continue;
+                return -1;
             }
         }
         sleep(eng_params->sleep);
@@ -1387,7 +1395,7 @@ static int do_migrate_pages(unsigned int pid, struct page_refs *page_refs, int n
             actual_num = 0;
             if (ret != 0) {
                 etmemd_log(ETMEMD_LOG_ERR, "task %d move_pages fail with %d errno %d\n", pid, ret, errno);
-                continue;
+                break;
             }
         }
     }
