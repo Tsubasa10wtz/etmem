@@ -492,6 +492,21 @@ static void free_server_rpc_params(struct server_rpc_params *svr)
         free(svr->file_name);
         svr->file_name = NULL;
     }
+
+    if (svr->eng_name != NULL) {
+        free(svr->eng_name);
+        svr->eng_name = NULL;
+    }
+
+    if (svr->eng_cmd != NULL) {
+        free(svr->eng_cmd);
+        svr->eng_cmd = NULL;
+    }
+
+    if (svr->task_name != NULL) {
+        free(svr->task_name);
+        svr->task_name = NULL;
+    }
 }
 
 static void etmemd_rpc_send_response_msg(int sock_fd, enum opt_result result)
@@ -531,7 +546,6 @@ static void etmemd_rpc_handle(int sock_fd)
     }
 
     etmemd_rpc_send_response_msg(sock_fd, ret);
-    free_server_rpc_params(&g_rpc_params);
     return;
 }
 
@@ -605,6 +619,7 @@ static int etmemd_rpc_accept(int sock_fd)
     if (etmemd_rpc_parse(recv_buf, (unsigned long)rc) == 0) {
         etmemd_rpc_handle(accp_fd);
     }
+    free_server_rpc_params(&g_rpc_params);
     ret = 0;
 
 RPC_EXIT:

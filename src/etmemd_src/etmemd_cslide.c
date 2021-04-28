@@ -689,6 +689,14 @@ static void factory_remove_pid_params(struct cslide_params_factory *factory, str
 
 static void factory_free_pid_params(struct cslide_params_factory *factory, struct cslide_pid_params *params)
 {
+    // Pid not started i.e not used. Free it here
+    if (params->state == STATE_NONE) {
+        free_pid_params(params);
+        return;
+    }
+
+    // Pid in use, free by cslide main when call factory_update_pid_params
+    // Avoid data race
     params->state = STATE_FREE;
 }
 
@@ -771,7 +779,7 @@ static int cslide_count_node_pfs(struct cslide_pid_params *params)
     void **pages = NULL;
     int *status = NULL;
     int actual_num = 0;
-    int ret = -1;
+    int ret = 0;
     int vma_i = 0;
 
     if (params->vmas == NULL || params->vma_pf == NULL) {
@@ -787,6 +795,7 @@ static int cslide_count_node_pfs(struct cslide_pid_params *params)
     pages = malloc(sizeof(void *) * batch_size);
     if (pages == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "malloc pages fail\n");
+        ret = -1;
         goto free_status;
     }
 
@@ -800,7 +809,9 @@ static int cslide_count_node_pfs(struct cslide_pid_params *params)
         if (actual_num == batch_size || page_refs->next == NULL) {
             if (move_pages(pid, actual_num, pages, NULL, status, MPOL_MF_MOVE_ALL) != 0) {
                 etmemd_log(ETMEMD_LOG_ERR, "get page refs numa node fail\n");
-                goto free_pages;
+                clean_page_refs_unexpected(&last);
+                ret = -1;
+                break;
             }
             insert_count_pfs(params->count_page_refs, last, status, actual_num);
             last = page_refs->next;
@@ -808,10 +819,10 @@ static int cslide_count_node_pfs(struct cslide_pid_params *params)
         }
         page_refs = page_refs->next;
     }
-    setup_count_pfs_tail(params->count_page_refs, params->count);
-    ret = 0;
 
-free_pages:
+    // this must be called before return
+    setup_count_pfs_tail(params->count_page_refs, params->count);
+
     free(pages);
     pages = NULL;
 free_status:
@@ -2033,7 +2044,7 @@ static int cslide_fill_eng(GKeyFile *config, struct engine *eng)
 
     if (init_cslide_eng_params(params) != 0) {
         etmemd_log(ETMEMD_LOG_ERR, "init cslide engine params fail\n");
-        return -1;
+        goto free_eng_params;
     }
 
     params->loop = eng->proj->loop;
@@ -2055,6 +2066,8 @@ static int cslide_fill_eng(GKeyFile *config, struct engine *eng)
 
 destroy_eng_params:
     destroy_cslide_eng_params(params);
+free_eng_params:
+    free(params);
     return -1;
 }
 
