@@ -1899,7 +1899,7 @@ static int cslide_fill_task(GKeyFile *config, struct task *tk)
     }
 
     tk->params = params;
-    if (etmemd_get_task_pids(tk) != 0) {
+    if (etmemd_get_task_pids(tk, false) != 0) {
         etmemd_log(ETMEMD_LOG_ERR, "cslide fail to get task pids\n");
         tk->params = NULL;
         goto exit;

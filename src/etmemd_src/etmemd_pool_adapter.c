@@ -49,7 +49,7 @@ static void *launch_threadtimer_executor(void *arg)
     int scheduing_count;
 
     if (tk->eng->proj->start) {
-        if (etmemd_get_task_pids(tk) != 0) {
+        if (etmemd_get_task_pids(tk, true) != 0) {
             return NULL;
         }
 

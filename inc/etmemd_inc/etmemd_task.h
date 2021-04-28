@@ -51,7 +51,7 @@ struct task {
     struct task *next;
 };
 
-int etmemd_get_task_pids(struct task *tk);
+int etmemd_get_task_pids(struct task *tk, bool recursive);
 
 void etmemd_free_task_pids(struct task *tk);
 
