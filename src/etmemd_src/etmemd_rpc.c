@@ -181,9 +181,53 @@ free_file:
     return ret;
 }
 
+int check_socket_permission(int sock_fd) {
+    struct ucred cred;
+    socklen_t len;
+    ssize_t rc;
+
+    len = sizeof(struct ucred);
+
+    rc = getsockopt(sock_fd,
+                    SOL_SOCKET,
+                    SO_PEERCRED,
+                    &cred,
+                    &len);
+    if (rc < 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "getsockopt failed, err(%s)\n",
+                   strerror(errno));
+        return -1;
+    }
+
+    if (cred.uid != 0 || cred.gid != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "client socket connect failed, permition denied\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+// ENG_CMD cmd permission checked inside engine
+static int check_cmd_permission(int sock_fd, int cmd)
+{
+    switch (cmd) {
+        case OBJ_ADD:
+        case OBJ_DEL:
+        case MIG_STOP:
+        case MIG_START:
+            return check_socket_permission(sock_fd);
+        default:
+            return 0;
+    }
+}
+
 static enum opt_result etmemd_switch_cmd(const struct server_rpc_params svr_param)
 {
     enum opt_result ret = OPT_INVAL;
+
+    if (check_cmd_permission(svr_param.sock_fd, svr_param.cmd) != 0) {
+        return OPT_INVAL;
+    }
 
     switch (svr_param.cmd) {
         case OBJ_ADD:
@@ -549,32 +593,6 @@ static void etmemd_rpc_handle(int sock_fd)
     return;
 }
 
-static int check_socket_permission(int sock_fd) {
-    struct ucred cred;
-    socklen_t len;
-    ssize_t rc;
-
-    len = sizeof(struct ucred);
-
-    rc = getsockopt(sock_fd,
-                    SOL_SOCKET,
-                    SO_PEERCRED,
-                    &cred,
-                    &len);
-    if (rc < 0) {
-        etmemd_log(ETMEMD_LOG_ERR, "getsockopt failed, err(%s)\n",
-                   strerror(errno));
-        return -1;
-    }
-
-    if (cred.uid != 0 || cred.gid != 0) {
-        etmemd_log(ETMEMD_LOG_ERR, "client socket connect failed, permition denied\n");
-        return -1;
-    }
-
-    return 0;
-}
-
 static int etmemd_rpc_accept(int sock_fd)
 {
     char *recv_buf = NULL;
@@ -595,11 +613,6 @@ static int etmemd_rpc_accept(int sock_fd)
         free(recv_buf);
         /* wait for next accept round, do not return -1 to stop listening */
         return 0;
-    }
-
-    rc = check_socket_permission(accp_fd);
-    if (rc != 0) {
-        goto RPC_EXIT;
     }
 
     rc = recv(accp_fd, recv_buf, RPC_BUFF_LEN_MAX, 0);

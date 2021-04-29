@@ -55,5 +55,7 @@ int etmemd_parse_sock_name(const char *sock_name);
 int etmemd_rpc_server(void);
 bool etmemd_sock_name_set(void);
 void etmemd_sock_name_free(void);
+// some engine cmd need to check socket permission
+int check_socket_permission(int sock_fd);
 
 #endif
