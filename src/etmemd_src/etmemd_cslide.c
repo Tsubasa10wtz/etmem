@@ -1300,7 +1300,7 @@ static int cslide_scan_vmas(struct cslide_pid_params *params)
     fd = fileno(scan_fp);
     if (fd == -1) {
         fclose(scan_fp);
-        etmemd_log(ETMEMD_LOG_ERR, "fileno file fail for %s\n", IDLE_SCAN_FILE);
+        etmemd_log(ETMEMD_LOG_ERR, "task %u fileno file fail for %s\n", params->pid, IDLE_SCAN_FILE);
         return -1;
     }
     for (i = 0; i < vmas->vma_cnt; i++) {
@@ -1309,7 +1309,7 @@ static int cslide_scan_vmas(struct cslide_pid_params *params)
         walk_address.walk_start = vma->start;
         walk_address.walk_end = vma->end;
         if (walk_vmas(fd, &walk_address, &vma_pf->page_refs, NULL) == NULL) {
-            etmemd_log(ETMEMD_LOG_ERR, "scan vma start %llu end %llu fail\n", vma->start, vma->end);
+            etmemd_log(ETMEMD_LOG_ERR, "task %u scan vma start %llu end %llu fail\n", params->pid, vma->start, vma->end);
             fclose(scan_fp);
             return -1;
         }
@@ -1349,14 +1349,16 @@ static int cslide_do_scan(struct cslide_eng_params *eng_params)
     return 0;
 }
 
+// error return -1; success return moved pages number
 static int do_migrate_pages(unsigned int pid, struct page_refs *page_refs, int node)
 {
     int batch_size = BATCHSIZE;
-    int ret = -1;
+    int ret;
     void **pages = NULL;
     int *nodes = NULL;
     int *status = NULL;
     int actual_num = 0;
+    int moved = -1;
 
     if (page_refs == NULL) {
         return 0;
@@ -1379,6 +1381,8 @@ static int do_migrate_pages(unsigned int pid, struct page_refs *page_refs, int n
         etmemd_log(ETMEMD_LOG_ERR, "malloc pages fail\n");
         goto free_status;
     }
+
+    moved = 0;
     while (page_refs != NULL) {
         pages[actual_num] = (void *)page_refs->addr;
         nodes[actual_num] = node;
@@ -1386,11 +1390,13 @@ static int do_migrate_pages(unsigned int pid, struct page_refs *page_refs, int n
         page_refs = page_refs->next;
         if (actual_num == batch_size || page_refs == NULL) {
             ret = move_pages(pid, actual_num, pages, nodes, status, MPOL_MF_MOVE_ALL);
-            actual_num = 0;
             if (ret != 0) {
                 etmemd_log(ETMEMD_LOG_ERR, "task %d move_pages fail with %d errno %d\n", pid, ret, errno);
+                moved = -1;
                 break;
             }
+            moved += actual_num;
+            actual_num = 0;
         }
     }
 
@@ -1402,25 +1408,34 @@ free_status:
 free_nodes:
     free(nodes);
     nodes = NULL;
-    return ret;
+    return moved;
 }
 
 static int migrate_single_task(unsigned int pid, const struct memory_grade *memory_grade, int hot_node, int cold_node)
 {
-    int ret = -1;
+    int moved;
 
-    if (do_migrate_pages(pid, memory_grade->cold_pages, cold_node) != 0) {
-        etmemd_log(ETMEMD_LOG_ERR, "migrate cold pages fail\n");
-        return ret;
+    moved = do_migrate_pages(pid, memory_grade->cold_pages, cold_node);
+    if (moved == -1) {
+        etmemd_log(ETMEMD_LOG_ERR, "task %u migrate cold pages fail\n", pid);
+        return -1;
+    }
+    if (moved != 0) {
+        etmemd_log(ETMEMD_LOG_INFO, "task %u move pages %lld KB from node %d to node %d\n",
+                pid, HUGE_2M_TO_KB((unsigned int)moved), hot_node, cold_node);
     }
 
-    if (do_migrate_pages(pid, memory_grade->hot_pages, hot_node) != 0) {
-        etmemd_log(ETMEMD_LOG_ERR, "migrate hot pages fail\n");
-        return ret;
+    moved = do_migrate_pages(pid, memory_grade->hot_pages, hot_node);
+    if (moved == -1) {
+        etmemd_log(ETMEMD_LOG_ERR, "task %u migrate hot pages fail\n", pid);
+        return -1;
+    }
+    if (moved != 0) {
+        etmemd_log(ETMEMD_LOG_INFO, "task %u move pages %lld KB from node %d to %d\n",
+                pid, HUGE_2M_TO_KB((unsigned int)moved), cold_node, hot_node);
     }
 
-    ret = 0;
-    return ret;
+    return 0;
 }
 
 static int cslide_do_migrate(struct cslide_eng_params *eng_params)
