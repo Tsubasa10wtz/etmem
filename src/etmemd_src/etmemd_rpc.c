@@ -63,7 +63,7 @@ struct rpc_resp_msg g_resp_msg_arr[] = {
     {OPT_ENG_NOEXIST, "error: engine is not exist"},
     {OPT_TASK_EXISTED, "error: task has been existed"},
     {OPT_TASK_NOEXIST, "error: task is not exist"},
-    {OPT_INTER_ERR, "error: etmemd has internal error"},
+    {OPT_INTER_ERR, "error: etmemd has internal error, see reason details in messages"},
     {OPT_RET_END, NULL},
 };
 

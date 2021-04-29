@@ -182,7 +182,7 @@ static int etmem_client_recv(int sockfd)
 
         recv_msg = (char *)recv_buf;
         recv_msg[recv_size] = '\0';
-        printf("%s", recv_msg);
+        printf("%s\n", recv_msg);
         if (etmem_recv_find_fail_keyword(recv_msg)) {
             printf("error occurs when getting response from etmemd server\n");
             goto EXIT;
