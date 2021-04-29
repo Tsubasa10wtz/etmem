@@ -94,11 +94,12 @@ struct obj_cmd_item {
     enum opt_result (*func)(GKeyFile *config);
 };
 
-static enum opt_result do_obj_cmd(GKeyFile *config, struct obj_cmd_item *items, unsigned n)
+static enum opt_result do_obj_cmd(GKeyFile *config, struct obj_cmd_item *items, unsigned n,bool add_opt)
 {
     unsigned i;
     bool parsed = false;
     enum opt_result ret;
+    enum opt_result err_ret = OPT_SUCCESS;
 
     for (i = 0; i < n; i++) {
         if (g_key_file_has_group(config, items[i].name) == FALSE) {
@@ -108,7 +109,10 @@ static enum opt_result do_obj_cmd(GKeyFile *config, struct obj_cmd_item *items, 
         ret = items[i].func(config);
         if (ret != 0) {
             etmemd_log(ETMEMD_LOG_ERR, "parse group %s fail\n", items[i].name);
-            return ret;
+            if (add_opt) {
+                return ret;
+            }
+            err_ret = ret;
         }
         parsed = true;
     }
@@ -116,6 +120,11 @@ static enum opt_result do_obj_cmd(GKeyFile *config, struct obj_cmd_item *items, 
     if (!parsed) {
         etmemd_log(ETMEMD_LOG_ERR, "no group has been parsed\n");
         return OPT_INVAL;
+    }
+
+    if (err_ret != OPT_SUCCESS) {
+        etmemd_log(ETMEMD_LOG_ERR, "error occurs in %s operation\n", add_opt ? "add" : "del");
+        return err_ret;
     }
 
     return OPT_SUCCESS;
@@ -129,7 +138,7 @@ struct obj_cmd_item g_obj_add_items[] = {
 
 static enum opt_result do_obj_add(GKeyFile *config)
 {
-    return do_obj_cmd(config, g_obj_add_items, ARRAY_SIZE(g_obj_add_items));
+    return do_obj_cmd(config, g_obj_add_items, ARRAY_SIZE(g_obj_add_items), true);
 }
 
 static struct obj_cmd_item obj_remove_items[] = {
@@ -140,7 +149,7 @@ static struct obj_cmd_item obj_remove_items[] = {
 
 static enum opt_result do_obj_remove(GKeyFile *config)
 {
-    return do_obj_cmd(config, obj_remove_items, ARRAY_SIZE(obj_remove_items));
+    return do_obj_cmd(config, obj_remove_items, ARRAY_SIZE(obj_remove_items), false);
 }
 
 static enum opt_result handle_obj_cmd(char *file_name, enum cmd_type type)
