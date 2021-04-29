@@ -24,8 +24,8 @@
 static void engine_help(void)
 {
     printf("\nUsage:\n"
-            "    memig engine eng_cmd [options]\n"
-            "    memig engine help\n"
+            "    etmem engine eng_cmd [options]\n"
+            "    etmem engine help\n"
             "\nOptions:\n"
             "    -n|--proj_name <proj_name> project engine belongs to\n"
             "    -s|--socket <socket_name> socket name to connect\n"
@@ -35,7 +35,8 @@ static void engine_help(void)
             "    1. project name must be given.\n"
             "    2. socket name must be given.\n"
             "    3. engine name must be given.\n"
-            "    4. engine cmd must be given.\n");
+            "    4. engine cmd must be given.\n"
+            "    5. eng_cmd is supported by engine own.\n");
 }
 
 static int engine_parse_cmd(struct etmem_conf *conf, struct mem_proj *proj)

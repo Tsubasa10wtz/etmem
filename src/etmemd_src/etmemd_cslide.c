@@ -1422,7 +1422,7 @@ static int migrate_single_task(unsigned int pid, const struct memory_grade *memo
         return -1;
     }
     if (moved != 0) {
-        etmemd_log(ETMEMD_LOG_INFO, "task %u move pages %lld KB from node %d to node %d\n",
+        etmemd_log(ETMEMD_LOG_INFO, "task %u move pages %llu KB from node %d to node %d\n",
                 pid, HUGE_2M_TO_KB((unsigned int)moved), hot_node, cold_node);
     }
 
@@ -1432,7 +1432,7 @@ static int migrate_single_task(unsigned int pid, const struct memory_grade *memo
         return -1;
     }
     if (moved != 0) {
-        etmemd_log(ETMEMD_LOG_INFO, "task %u move pages %lld KB from node %d to %d\n",
+        etmemd_log(ETMEMD_LOG_INFO, "task %u move pages %llu KB from node %d to %d\n",
                 pid, HUGE_2M_TO_KB((unsigned int)moved), cold_node, hot_node);
     }
 

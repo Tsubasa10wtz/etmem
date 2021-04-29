@@ -212,8 +212,11 @@ static int check_cmd_permission(int sock_fd, int cmd)
 {
     switch (cmd) {
         case OBJ_ADD:
+            /* fallthrough */
         case OBJ_DEL:
+            /* fallthrough */
         case MIG_STOP:
+            /* fallthrough */
         case MIG_START:
             return check_socket_permission(sock_fd);
         default:
