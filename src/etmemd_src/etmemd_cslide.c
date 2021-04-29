@@ -36,6 +36,7 @@
 #define HUGE_1G_SIZE    (1 << 30)
 #define BYTE_TO_KB(s)   ((s) >> 10)
 #define KB_TO_BYTE(s)   ((s) << 10)
+#define HUGE_2M_TO_KB(s) ((s) << 11)
 
 #define TO_PCT 100
 #define MAX_WM 100
@@ -154,6 +155,7 @@ struct cslide_eng_params {
         int sleep;
     };
     struct cslide_params_factory factory;
+    struct node_pages_info *host_pages_info;
     bool finish;
 };
 
@@ -166,12 +168,13 @@ struct node_ctrl {
     struct ctrl_cap hot_move_cap;
     struct ctrl_cap hot_prefetch_cap;
     struct ctrl_cap cold_move_cap;
-    long long cold_replaced;
-    long long cold_free;
-    long long free;
-    long long total;
-    long long quota;
-    long long reserve;
+    long long cold_replaced; // cold mem in hot node replace by hot mem in cold node
+    long long cold_free; // free mem in cold node
+    long long free; // free mem in hot node
+    long long cold; // cold mem in hot node
+    long long total; // total mem in hot node
+    long long quota; // move quota
+    long long reserve; // reserve space can't used by cold mem
 };
 
 struct flow_ctrl {
@@ -854,17 +857,21 @@ static bool node_cal_hot_can_move(struct node_ctrl *node_ctrl)
 {
     long long can_move;
 
+    // can_move limited by quota
     if (node_ctrl->quota < node_ctrl->free) {
         can_move = node_ctrl->quota;
     } else {
+        // can_move limited by hot node free
         can_move = node_ctrl->free + (node_ctrl->quota - node_ctrl->free) / 2;
+        // can_move limited by cold node free
         if (can_move > node_ctrl->free + node_ctrl->cold_free) {
             can_move = node_ctrl->free + node_ctrl->cold_free;
         }
     }
 
-    if (can_move > node_ctrl->total) {
-        can_move = node_ctrl->total;
+    // can_move limited by free and cold mem in hot node
+    if (can_move > node_ctrl->cold + node_ctrl->free) {
+        can_move = node_ctrl->cold + node_ctrl->free;
     }
     node_ctrl->hot_move_cap.cap = can_move;
     return can_move > 0;
@@ -963,9 +970,13 @@ static inline bool node_move_cold(struct node_ctrl *node_ctrl, long long *target
     return cap_cost(&node_ctrl->cold_move_cap, target);
 }
 
-static int init_flow_ctrl(struct flow_ctrl *ctrl, struct sys_mem *sys_mem, struct node_map *node_map,
-        long long quota, long long reserve)
+static int init_flow_ctrl(struct flow_ctrl *ctrl, struct cslide_eng_params *eng_params)
 {
+
+    long long quota = (long long)eng_params->mig_quota * HUGE_1M_SIZE;
+    long long reserve = (long long)eng_params->hot_reserve * HUGE_1M_SIZE;
+    struct sys_mem *sys_mem = &eng_params->mem;
+    struct node_map *node_map = &eng_params->node_map;
     struct node_pair *pair = NULL;
     struct node_ctrl *tmp = NULL;
     int i;
@@ -985,6 +996,7 @@ static int init_flow_ctrl(struct flow_ctrl *ctrl, struct sys_mem *sys_mem, struc
         tmp = &ctrl->node_ctrl[i];
         tmp->cold_free = sys_mem->node_mem[pair->cold_node].huge_free;
         tmp->free = sys_mem->node_mem[pair->hot_node].huge_free;
+        tmp->cold = KB_TO_BYTE((unsigned long long)eng_params->host_pages_info[pair->hot_node].cold);
         tmp->total = sys_mem->node_mem[pair->hot_node].huge_total;
         tmp->quota = quota;
         tmp->reserve = reserve;
@@ -1187,10 +1199,8 @@ static void move_cold_pages(struct cslide_eng_params *eng_params, struct flow_ct
 static int cslide_filter_pfs(struct cslide_eng_params *eng_params)
 {
     struct flow_ctrl ctrl;
-    long long quota = (long long)eng_params->mig_quota * HUGE_1M_SIZE;
-    long long reserve = (long long)eng_params->hot_reserve * HUGE_1M_SIZE;
 
-    if (init_flow_ctrl(&ctrl, &eng_params->mem, &eng_params->node_map, quota, reserve) != 0) {
+    if (init_flow_ctrl(&ctrl, eng_params) != 0) {
         etmemd_log(ETMEMD_LOG_ERR, "init_flow_ctrl fail\n");
         return -1;
     }
@@ -1201,22 +1211,6 @@ static int cslide_filter_pfs(struct cslide_eng_params *eng_params)
 
     destroy_flow_ctrl(&ctrl);
     return 0;
-}
-
-static int cslide_policy(struct cslide_eng_params *eng_params)
-{
-    struct cslide_pid_params *pid_params = NULL;
-    int ret;
-
-    factory_foreach_working_pid_params(pid_params, &eng_params->factory) {
-        ret = cslide_count_node_pfs(pid_params);
-        if (ret != 0) {
-            etmemd_log(ETMEMD_LOG_ERR, "count node page refs fail\n");
-            return ret;
-        }
-    }
-
-    return cslide_filter_pfs(eng_params);
 }
 
 static int cslide_get_vmas(struct cslide_pid_params *pid_params)
@@ -1510,26 +1504,41 @@ static bool need_migrate(struct cslide_eng_params *eng_params)
     return false;
 }
 
-static void get_node_pages_info(struct cslide_pid_params *pid_params)
+static void init_host_pages_info(struct cslide_eng_params *eng_params)
 {
-    struct cslide_eng_params *eng_params = pid_params->eng_params;
+    int n;
+    int node_num = eng_params->mem.node_num;
+    struct node_pages_info *host_pages = eng_params->host_pages_info;
+
+    for (n = 0; n < node_num; n++) {
+        host_pages[n].cold = 0;
+        host_pages[n].hot = 0;
+    }
+}
+
+static void update_pages_info(struct cslide_eng_params *eng_params, struct cslide_pid_params *pid_params)
+{
     int n, c;
     int t = eng_params->hot_threshold;
     int count = pid_params->count;
     int actual_t = t > count ? count + 1 : t;
     int node_num = pid_params->count_page_refs->node_num;
-    struct node_pages_info *info = pid_params->node_pages_info;
+    struct node_pages_info *task_pages = pid_params->node_pages_info;
+    struct node_pages_info *host_pages = eng_params->host_pages_info;
 
     for (n = 0; n < node_num; n++) {
-        info[n].cold = 0;
-        info[n].hot = 0;
+        task_pages[n].cold = 0;
+        task_pages[n].hot = 0;
 
         for (c = 0; c < actual_t; c++) {
-            info[n].cold += pid_params->count_page_refs[c].node_pfs[n].num * 2 * 1024;
+            task_pages[n].cold += HUGE_2M_TO_KB(pid_params->count_page_refs[c].node_pfs[n].num);
         }
         for (; c <= count; c++) {
-            info[n].hot += pid_params->count_page_refs[c].node_pfs[n].num * 2 * 1024;
+            task_pages[n].hot += HUGE_2M_TO_KB(pid_params->count_page_refs[c].node_pfs[n].num);
         }
+
+        host_pages[n].cold += task_pages[n].cold;
+        host_pages[n].hot += task_pages[n].hot;
     }
 }
 
@@ -1538,11 +1547,31 @@ static void cslide_stat(struct cslide_eng_params *eng_params)
     struct cslide_pid_params *iter = NULL;
 
     pthread_mutex_lock(&eng_params->stat_mtx);
+    init_host_pages_info(eng_params);
     factory_foreach_working_pid_params(iter, &eng_params->factory) {
-        get_node_pages_info(iter);
+        update_pages_info(eng_params, iter);
     }
     eng_params->stat_time = time(NULL);
     pthread_mutex_unlock(&eng_params->stat_mtx);
+}
+
+static int cslide_policy(struct cslide_eng_params *eng_params)
+{
+    struct cslide_pid_params *pid_params = NULL;
+    int ret;
+
+    factory_foreach_working_pid_params(pid_params, &eng_params->factory) {
+        ret = cslide_count_node_pfs(pid_params);
+        if (ret != 0) {
+            etmemd_log(ETMEMD_LOG_ERR, "count node page refs fail\n");
+            return ret;
+        }
+    }
+
+    // update pages info now, so cslide_filter_pfs can use this info
+    cslide_stat(eng_params);
+
+    return cslide_filter_pfs(eng_params);
 }
 
 static void cslide_clean_params(struct cslide_eng_params *eng_params)
@@ -1559,6 +1588,8 @@ static void cslide_clean_params(struct cslide_eng_params *eng_params)
 
 static void destroy_cslide_eng_params(struct cslide_eng_params *params)
 {
+    free(params->host_pages_info);
+    params->host_pages_info = NULL;
     destroy_factory(&params->factory);
     pthread_mutex_destroy(&params->stat_mtx);
     destroy_node_map(&params->node_map);
@@ -1567,6 +1598,8 @@ static void destroy_cslide_eng_params(struct cslide_eng_params *params)
 
 static int init_cslide_eng_params(struct cslide_eng_params *params)
 {
+    int node_num;
+
     if (init_sys_mem(&params->mem) != 0) {
         etmemd_log(ETMEMD_LOG_ERR, "init system memory fail\n");
         return -1;
@@ -1587,7 +1620,17 @@ static int init_cslide_eng_params(struct cslide_eng_params *params)
         goto destroy_stat_mtx;
     }
 
+    node_num = params->mem.node_num;
+    params->host_pages_info = calloc(node_num, sizeof(struct node_pages_info));
+    if (params->host_pages_info == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "alloc host_pages_info fail\n");
+        goto destroy_factory;
+    }
+
     return 0;
+
+destroy_factory:
+    destroy_factory(&params->factory);
 
 destroy_stat_mtx:
     pthread_mutex_destroy(&params->stat_mtx);
@@ -1642,7 +1685,6 @@ static void *cslide_main(void *arg)
         }
 
 next:
-        cslide_stat(eng_params);
         sleep(eng_params->interval);
         cslide_clean_params(eng_params);
     }
@@ -1745,24 +1787,11 @@ static struct cslide_cmd_item g_task_cmd_items[] = {
 static int show_host_pages(void *params, int fd)
 {
     struct cslide_eng_params *eng_params = (struct cslide_eng_params *)params;
-    struct cslide_pid_params *iter = NULL;
     char *time_str = NULL;
     int node_num = eng_params->mem.node_num;
     int n;
     uint32_t total;
-    struct node_pages_info *info = calloc(node_num, sizeof(struct node_pages_info));
-
-    if (info == NULL) {
-        etmemd_log(ETMEMD_LOG_ERR, "alloc memory for node_page_info fail\n");
-        return -1;
-    }
-
-    factory_foreach_working_pid_params(iter, &eng_params->factory) {
-        for (n = 0; n < node_num; n++) {
-            info[n].hot += iter->node_pages_info[n].hot;
-            info[n].cold += iter->node_pages_info[n].cold;
-        }
-    }
+    struct node_pages_info *info = eng_params->host_pages_info;
 
     time_str = get_time_stamp(&eng_params->stat_time);
     if (time_str != NULL) {
@@ -1776,7 +1805,6 @@ static int show_host_pages(void *params, int fd)
                     n, total, info[n].hot + info[n].cold, info[n].hot, info[n].cold);
     }
 
-    free(info);
     return 0;
 }
 
