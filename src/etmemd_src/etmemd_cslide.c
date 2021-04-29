@@ -2048,6 +2048,11 @@ static int fill_hot_reserve(void *obj, void *val)
     struct cslide_eng_params *params = (struct cslide_eng_params *)obj;
     int hot_reserve = parse_to_int(val);
 
+    if (hot_reserve < 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "config hot reserve %d not valid\n", hot_reserve);
+        return -1;
+    }
+
     params->hot_reserve = hot_reserve;
     return 0;
 }
@@ -2056,6 +2061,11 @@ static int fill_mig_quota(void *obj, void *val)
 {
     struct cslide_eng_params *params = (struct cslide_eng_params *)obj;
     int mig_quota = parse_to_int(val);
+
+    if (mig_quota < 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "config mig quota %d not valid\n", mig_quota);
+        return -1;
+    }
 
     params->mig_quota = mig_quota;
     return 0;
