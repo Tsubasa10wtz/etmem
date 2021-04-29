@@ -107,7 +107,7 @@ static int project_check_params(const struct mem_proj *proj)
         printf("socket name to connect must all be given, please check.\n");
         return -EINVAL;
     }
- 
+
     if (proj->cmd == ETMEM_CMD_SHOW) {
         return 0;
     }
