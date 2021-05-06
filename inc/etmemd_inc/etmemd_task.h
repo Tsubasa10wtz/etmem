@@ -17,12 +17,11 @@
 #ifndef ETMEMD_TASK_H
 #define ETMEMD_TASK_H
 
-#include <stdint.h>
 #include <stdbool.h>
-#include <pthread.h>
 #include <glib.h>
 #include "etmemd_threadpool.h"
 #include "etmemd_threadtimer.h"
+#include "etmemd_task_exp.h"
 
 /* in some system the max length of pid may be larger than 5, so we use 10 here */
 #define PID_STR_MAX_LEN 10
@@ -33,22 +32,6 @@ struct task_pid {
     void *params;           /* pid personal parameter */
     struct task *tk;        /* point to its task */
     struct task_pid *next;
-};
-
-struct task {
-    char *type;
-    char *value;
-    char *name;
-    uint64_t max_threads;
-
-    struct task_pid *pids;
-    struct engine *eng;
-    void *params;
-    pthread_t task_pt;
-    timer_thread *timer_inst;
-    thread_pool *threadpool_inst;
-
-    struct task *next;
 };
 
 int etmemd_get_task_pids(struct task *tk, bool recursive);

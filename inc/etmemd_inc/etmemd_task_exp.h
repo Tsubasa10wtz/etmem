@@ -8,28 +8,36 @@
  * IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR
  * PURPOSE.
  * See the Mulan PSL v2 for more details.
- * Author: louhongxiang
- * Create: 2019-12-10
- * Description: This is a header file of the data structure definition for etmem engine.
+ * Author: shikemeng
+ * Create: 2021-4-30
+ * Description: This is a header file of the export task symbols.
  ******************************************************************************/
 
-#ifndef ETMEMD_ENGINE_H
-#define ETMEMD_ENGINE_H
+#ifndef ETMEMD_TASK_EXP_H
+#define ETMEMD_TASK_EXP_H
 
-#include "etmemd.h"
-#include "etmemd_task.h"
-#include "etmemd_engine_exp.h"
+#include <stdint.h>
+#include <pthread.h>
 
-enum eng_type {
-    SLIDE_ENGINE = 0,
-    CSLIDE_ENGINE,
-    DYNAMIC_FB_ENGINE,
-    HISTORICAL_FB_ENGINE,
-    THIRDPARTY_ENGINE,
-    ENGINE_TYPE_CNT,
+struct timer_thread_t;
+typedef struct timer_thread_t timer_thread;
+struct thread_pool_t;
+typedef struct thread_pool_t thread_pool;
+
+struct task {
+    char *type;
+    char *value;
+    char *name;
+    uint64_t max_threads;
+
+    struct task_pid *pids;
+    struct engine *eng;
+    void *params;
+    pthread_t task_pt;
+    timer_thread *timer_inst;
+    thread_pool *threadpool_inst;
+
+    struct task *next;
 };
-
-struct engine *etmemd_engine_add(GKeyFile *config);
-void etmemd_engine_remove(struct engine *eng);
 
 #endif
