@@ -42,6 +42,7 @@ struct engine {
     struct task *tasks;
     uint64_t page_cnt;          /* number of pages */
     struct engine *next;
+    void *handler;
 };
 
 struct engine_ops {

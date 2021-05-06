@@ -211,7 +211,7 @@ struct engine_ops g_slide_eng_ops = {
     .eng_mgt_func = NULL,
 };
 
-int fill_engine_type_slide(struct engine *eng)
+int fill_engine_type_slide(struct engine *eng, GKeyFile *config)
 {
     eng->ops = &g_slide_eng_ops;
     eng->engine_type = SLIDE_ENGINE;

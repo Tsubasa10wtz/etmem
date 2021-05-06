@@ -33,6 +33,7 @@ set(ETMEMD_SRC
  ${ETMEMD_SRC_DIR}/etmemd_engine.c
  ${ETMEMD_SRC_DIR}/etmemd_slide.c
  ${ETMEMD_SRC_DIR}/etmemd_cslide.c
+ ${ETMEMD_SRC_DIR}/etmemd_thirdparty.c
  ${ETMEMD_SRC_DIR}/etmemd_task.c
  ${ETMEMD_SRC_DIR}/etmemd_scan.c
  ${ETMEMD_SRC_DIR}/etmemd_threadpool.c

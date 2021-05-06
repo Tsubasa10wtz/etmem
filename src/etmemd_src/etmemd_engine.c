@@ -18,27 +18,51 @@
 #include "etmemd_engine.h"
 #include "etmemd_slide.h"
 #include "etmemd_cslide.h"
+#include "etmemd_thirdparty.h"
 #include "etmemd_log.h"
 #include "etmemd_common.h"
 #include "etmemd_file.h"
 
-struct engine_item {
+struct engine_add_item {
     char *name;
-    int (*fill_eng_func)(struct engine *eng);
+    int (*fill_eng_func)(struct engine *eng, GKeyFile *config);
 };
 
-static struct engine_item g_engine_items[] = {
+struct engine_remove_item {
+    int type;
+    void (*clear_eng_func)(struct engine *eng);
+};
+
+static struct engine_add_item g_engine_add_items[] = {
     {"slide", fill_engine_type_slide},
     {"cslide", fill_engine_type_cslide},
+    {"thirdparty", fill_engine_type_thirdparty},
 };
 
-static struct engine_item *find_engine_item(const char *name)
+static struct engine_add_item *find_engine_add_item(const char *name)
 {
     unsigned i;
 
-    for (i = 0; i < ARRAY_SIZE(g_engine_items); i++) {
-        if (strcmp(name, g_engine_items[i].name) == 0) {
-            return &g_engine_items[i];
+    for (i = 0; i < ARRAY_SIZE(g_engine_add_items); i++) {
+        if (strcmp(name, g_engine_add_items[i].name) == 0) {
+            return &g_engine_add_items[i];
+        }
+    }
+
+    return NULL;
+}
+
+static struct engine_remove_item g_engine_remove_items[] = {
+    {THIRDPARTY_ENGINE, clear_engine_type_thirdparty},
+};
+
+static struct engine_remove_item *find_engine_remove_item(int type)
+{
+    unsigned i;
+
+    for (i = 0; i < ARRAY_SIZE(g_engine_remove_items); i++) {
+        if (g_engine_remove_items[i].type == type) {
+            return &g_engine_remove_items[i];
         }
     }
 
@@ -48,7 +72,7 @@ static struct engine_item *find_engine_item(const char *name)
 struct engine *etmemd_engine_add(GKeyFile *config)
 {
     struct engine *eng = NULL;
-    struct engine_item *item = NULL;
+    struct engine_add_item *item = NULL;
     char *name = NULL;
 
     if (g_key_file_has_key(config, ENG_GROUP, "name", NULL) == FALSE) {
@@ -62,7 +86,7 @@ struct engine *etmemd_engine_add(GKeyFile *config)
         return NULL;
     }
 
-    item = find_engine_item(name);
+    item = find_engine_add_item(name);
     if (item == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "engine %s not support\n", name);
         goto free_name;
@@ -74,7 +98,7 @@ struct engine *etmemd_engine_add(GKeyFile *config)
         goto free_name;
     }
 
-    if (item->fill_eng_func(eng) != 0) {
+    if (item->fill_eng_func(eng, config) != 0) {
         etmemd_log(ETMEMD_LOG_ERR, "fill engine %s fail\n", name);
         free(eng);
         eng = NULL;
@@ -94,5 +118,12 @@ free_name:
 
 void etmemd_engine_remove(struct engine *eng)
 {
+    struct engine_remove_item *item = NULL;
+
+    item = find_engine_remove_item(eng->engine_type);
+    if (item != NULL) {
+        item->clear_eng_func(eng);
+    }
+
     free(eng);
 }

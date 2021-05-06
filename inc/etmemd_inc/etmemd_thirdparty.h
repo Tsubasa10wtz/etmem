@@ -8,16 +8,17 @@
  * IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR
  * PURPOSE.
  * See the Mulan PSL v2 for more details.
- * Author: louhongxiang
- * Create: 2019-12-10
- * Description: This is a header file of the function declaration for cslide function.
+ * Author: shikemeng
+ * Create: 2021-4-30
+ * Description: This is a header file of the function declaration for thirdparty function.
  ******************************************************************************/
 
-#ifndef ETMEMD_CSLIDE_H
-#define ETMEMD_CSLIDE_H
+#ifndef ETMEMD_THIRDPARTY_H
+#define ETMEMD_THIRDPARTY_H
 
 #include "etmemd_engine.h"
 
-int fill_engine_type_cslide(struct engine *eng, GKeyFile *config);
+int fill_engine_type_thirdparty(struct engine *eng, GKeyFile *config);
+void clear_engine_type_thirdparty(struct engine *eng);
 
 #endif

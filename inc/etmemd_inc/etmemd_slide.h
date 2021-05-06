@@ -24,6 +24,6 @@ struct slide_params {
     int t;          /* watermark */
 };
 
-int fill_engine_type_slide(struct engine *eng);
+int fill_engine_type_slide(struct engine *eng, GKeyFile *config);
 
 #endif
