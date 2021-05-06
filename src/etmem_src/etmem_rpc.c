@@ -134,7 +134,7 @@ static int etmem_client_send(const struct mem_proj *proj, int sockfd)
     }
 
     if (send(sockfd, reg_cmd, reg_cmd_len, 0) < 0) {
-        perror("send failed:"); 
+        perror("send failed:");
         goto EXIT;
     }
     ret = 0;

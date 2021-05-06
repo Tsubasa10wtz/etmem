@@ -34,7 +34,7 @@ static void usage(void)
             "    etmem OBJECT COMMAND\n"
             "    etmem help\n"
             "\nParameters:\n"
-            "    OBJECT  := { project | migrate }\n"
+            "    OBJECT  := { project | obj }\n"
             "    COMMAND := { add | del | start | stop | show | help }\n");
 }
 

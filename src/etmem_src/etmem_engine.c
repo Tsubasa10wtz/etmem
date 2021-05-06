@@ -23,15 +23,24 @@
 
 static void engine_help(void)
 {
-    printf("etmem engine help information\n");
+    printf("\nUsage:\n"
+            "    etmem engine eng_cmd [options]\n"
+            "    etmem engine help\n"
+            "\nOptions:\n"
+            "    -n|--proj_name <proj_name> project engine belongs to\n"
+            "    -s|--socket <socket_name> socket name to connect\n"
+            "    -e|--engine <engine_name> engine to execute cmd\n"
+            "    -t|--task_name <task_name> task for cmd\n"
+            "\nNotes:\n"
+            "    1. project name must be given.\n"
+            "    2. socket name must be given.\n"
+            "    3. engine name must be given.\n"
+            "    4. engine cmd must be given.\n"
+            "    5. eng_cmd is supported by engine own.\n");
 }
 
 static int engine_parse_cmd(struct etmem_conf *conf, struct mem_proj *proj)
 {
-    if (conf->argc == 0) {
-        printf("too few params for etmem client engine command\n");
-        return -1;
-    }
     proj->eng_cmd = conf->argv[0];
     proj->cmd = ETMEM_CMD_ENGINE;
     return 0;

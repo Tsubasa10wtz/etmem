@@ -264,18 +264,12 @@ int get_pid_from_task_type(const struct task *tk, char *pid)
     return -1;
 }
 
-static int get_and_fill_pids(struct task *tk, char *pid)
+static int fill_task_child_pid(struct task *tk, char *pid)
 {
     char *arg_pid[] = {"/usr/bin/pgrep", "-P", pid, NULL};
     FILE *file = NULL;
     int ret;
     int pipefd[2]; /* used for pipefd[2] communication to obtain the task PID */
-
-    /* first, insert the pid of task into the pids list */
-    if (fill_task_pid(tk, pid) != 0) {
-        etmemd_log(ETMEMD_LOG_WARN, "fill task pid fail\n");
-        return -1;
-    }
 
     if (pipe(pipefd) == -1) {
         return -1;
@@ -341,7 +335,7 @@ void etmemd_free_task_pids(struct task *tk)
     }
 }
 
-int etmemd_get_task_pids(struct task *tk)
+int etmemd_get_task_pids(struct task *tk, bool recursive)
 {
     char pid[PID_STR_MAX_LEN] = {0};
 
@@ -356,8 +350,17 @@ int etmemd_get_task_pids(struct task *tk)
         return -1;
     }
 
-    /* then fill the pids according to the pid of task */
-    if (get_and_fill_pids(tk, pid) != 0) {
+    /* first, insert the pid of task into the pids list */
+    if (fill_task_pid(tk, pid) != 0) {
+        etmemd_log(ETMEMD_LOG_WARN, "fill task pid fail\n");
+        return -1;
+    }
+    if (!recursive) {
+        return 0;
+    }
+
+    /* then fill the child pids according to the pid of task */
+    if (fill_task_child_pid(tk, pid) != 0) {
         etmemd_free_task_pids(tk);
         etmemd_log(ETMEMD_LOG_WARN, "get task child pids fail\n");
         return -1;

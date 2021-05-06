@@ -709,10 +709,14 @@ enum opt_result etmemd_project_mgt_engine(const char *project_name, const char *
     eng = get_eng_by_name(proj, eng_name);
     if (eng == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "engine %s is not existed\n", eng_name);
-        return OPT_INVAL;
+        return OPT_ENG_NOEXIST;
     }
     if (task_name != NULL) {
         tk = get_task_by_name(proj, eng, task_name);
+        if (tk == NULL) {
+            etmemd_log(ETMEMD_LOG_ERR, "task %s not found\n", task_name);
+            return OPT_TASK_NOEXIST;
+        }
     }
     if (eng->ops->eng_mgt_func(eng, tk, cmd, sock_fd) != 0) {
         return OPT_INVAL;

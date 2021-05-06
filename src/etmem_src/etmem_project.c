@@ -78,22 +78,14 @@ static int project_parse_args(const struct etmem_conf *conf, struct mem_proj *pr
         {NULL, 0, NULL, 0},
     };
 
-    while ((opt = getopt_long(conf->argc, conf->argv, "f:n:s:",
+    while ((opt = getopt_long(conf->argc, conf->argv, "n:s:",
                               opts, NULL)) != -1) {
         switch (opt) {
             case 'n':
-                ret = parse_name_string(optarg, &proj->proj_name, PROJECT_NAME_MAX_LEN);
-                if (ret != 0) {
-                    printf("parse project name failed.\n");
-                    return ret;
-                }
+                proj->proj_name = optarg;
                 break;
             case 's':
-                ret = parse_name_string(optarg, &proj->sock_name, SOCKET_NAME_MAX_LEN);
-                if (ret != 0) {
-                    printf("parse socket name failed.\n");
-                    return ret;
-                }
+                proj->sock_name = optarg;
                 break;
             case '?':
                 /* fallthrough */
@@ -115,7 +107,7 @@ static int project_check_params(const struct mem_proj *proj)
         printf("socket name to connect must all be given, please check.\n");
         return -EINVAL;
     }
- 
+
     if (proj->cmd == ETMEM_CMD_SHOW) {
         return 0;
     }
@@ -148,18 +140,16 @@ static int project_do_cmd(struct etmem_conf *conf)
 
     ret = project_parse_args(conf, &proj);
     if (ret != 0) {
-        goto EXIT;
+        return ret;
     }
 
     ret = project_check_params(&proj);
     if (ret != 0) {
-        goto EXIT;
+        return ret;
     }
 
-    etmem_rpc_client(&proj);
+    ret = etmem_rpc_client(&proj);
 
-EXIT:
-    free_proj_member(&proj);
     return ret;
 }
 
