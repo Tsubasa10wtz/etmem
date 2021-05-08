@@ -16,6 +16,7 @@
 #ifndef ETMEMD_ENGINE_H
 #define ETMEMD_ENGINE_H
 
+#include <glib.h>
 #include "etmemd.h"
 #include "etmemd_task.h"
 #include "etmemd_engine_exp.h"

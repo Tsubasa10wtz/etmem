@@ -13,8 +13,8 @@
  * Description: This is a header file of the function declaration for user defined thirdparty engine.
  ******************************************************************************/
 
-#ifndef ETMEM_THIRDPARTY_H
-#define ETMEM_THIRDPARTY_H
+#ifndef ETMEM_THIRDPARTY_EXPORT_H
+#define ETMEM_THIRDPARTY_EXPORT_H
 
 #include "etmemd_project_exp.h"
 #include "etmemd_engine_exp.h"

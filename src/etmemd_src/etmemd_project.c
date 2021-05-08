@@ -33,6 +33,8 @@
 #define MAX_SLEEP_VALUE     1200
 #define MAX_LOOP_VALUE      120
 
+#define MAX_OBJ_NAME_LEN    64
+
 static SLIST_HEAD(project_list, project) g_projects = SLIST_HEAD_INITIALIZER(g_projects);
 
 static struct project *get_proj_by_name(const char *name)
@@ -95,7 +97,12 @@ static enum opt_result get_name_by_key(GKeyFile *config, const char *group_name,
     *name = g_key_file_get_string(config, group_name, key, NULL);
     if (*name == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "get value of key %s from group %s fail\n", key, group_name);
-        return OPT_INTER_ERR;
+        return OPT_INVAL;
+    }
+    if (strlen(*name) > MAX_OBJ_NAME_LEN) {
+        etmemd_log(ETMEMD_LOG_ERR, "name len should not be greater than %d\n", MAX_OBJ_NAME_LEN);
+        free(*name);
+        return OPT_INVAL;
     }
 
     return OPT_SUCCESS;

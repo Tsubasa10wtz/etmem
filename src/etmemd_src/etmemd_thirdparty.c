@@ -85,14 +85,12 @@ static int set_engine_ops(struct engine *eng, struct thirdparty_params *params)
     char *err = NULL;
 
     handler = dlopen(params->libname, RTLD_NOW | RTLD_LOCAL);
-    if (handler == NULL) {
-        err = dlerror();
+    err = dlerror();
+    if (err != NULL && handler == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "load library %s fail with error: %s\n", params->libname, err);
         return -1;
     }
 
-    /* Clear error */
-    dlerror();
     ops = dlsym(handler, params->ops_name);
     err = dlerror();
     if (err != NULL) {
