@@ -10,7 +10,7 @@
  * See the Mulan PSL v2 for more details.
  * Author: shikemeng
  * Create: 2021-4-19
- * Description: Memigd cslide API.
+ * Description: Etmemd cslide API.
  ******************************************************************************/
 
 #include <stdlib.h>

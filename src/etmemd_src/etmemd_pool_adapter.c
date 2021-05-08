@@ -10,7 +10,7 @@
  * See the Mulan PSL v2 for more details.
  * Author: louhongxiang
  * Create: 2019-12-10
- * Description: Memigd pool adapter API.
+ * Description: Etmemd pool adapter API.
  ******************************************************************************/
 
 #include <stdbool.h>

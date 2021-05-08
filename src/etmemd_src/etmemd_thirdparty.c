@@ -10,7 +10,7 @@
  * See the Mulan PSL v2 for more details.
  * Author: shikemeng
  * Create: 2021-04-30
- * Description: Memigd thirdparty API.
+ * Description: Etmemd thirdparty API.
  ******************************************************************************/
 
 #include <stdio.h>
