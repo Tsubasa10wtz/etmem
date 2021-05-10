@@ -23,9 +23,6 @@
 #include "etmemd_threadtimer.h"
 #include "etmemd_task_exp.h"
 
-/* in some system the max length of pid may be larger than 5, so we use 10 here */
-#define PID_STR_MAX_LEN 10
-
 struct task_pid {
     unsigned int pid;
     float rt_swapin_rate;   /* real time swapin rate */

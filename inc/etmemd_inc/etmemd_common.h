@@ -23,9 +23,14 @@
 #define FILE_LINE_MAX_LEN 1024
 #define KEY_VALUE_MAX_LEN 64
 #define DECIMAL_RADIX 10
-#define ETMEMD_MAX_PARAMETER_NUM 5
+#define ETMEMD_MAX_PARAMETER_NUM 6
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
+
+/* in some system the max length of pid may be larger than 5, so we use 10 herr */
+#define PID_STR_MAX_LEN 10
+
+#define PIPE_FD_LEN 2
 
 /*
  * function: parse cmdline passed to etmemd server.

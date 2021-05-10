@@ -205,7 +205,7 @@ static int get_pid_from_type_name(char *val, char *pid)
     char *arg_pid[] = {"/usr/bin/pgrep", "-x", val, NULL};
     FILE *file = NULL;
     int ret = -1;
-    int pipefd[2]; /* used for pipefd[2] communication to obtain the task PID */
+    int pipefd[PIPE_FD_LEN]; /* used for pipefd[PIPE_FD_LEN] communication to obtain the task PID */
 
     if (pipe(pipefd) == -1) {
         return -1;
@@ -269,7 +269,7 @@ static int fill_task_child_pid(struct task *tk, char *pid)
     char *arg_pid[] = {"/usr/bin/pgrep", "-P", pid, NULL};
     FILE *file = NULL;
     int ret;
-    int pipefd[2]; /* used for pipefd[2] communication to obtain the task PID */
+    int pipefd[PIPE_FD_LEN]; /* used for pipefd[PIPE_FD_LEN] communication to obtain the task PID */
 
     if (pipe(pipefd) == -1) {
         return -1;

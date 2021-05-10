@@ -37,6 +37,7 @@ static void usage(void)
            "\noptions:\n"
            "    -l|--log-level <log-level>  Log level\n"
            "    -s|--socket <sockect name>  Socket name to listen to\n"
+           "    -m|--mode-systemctl         mode used to start(systemctl)\n"        
            "    -h|--help                   Show this message\n");
 }
 
@@ -65,6 +66,9 @@ static int etmemd_parse_opts_valid(int opt, bool *is_help)
             ret = 0;
             *is_help = true;
             usage();
+            break;
+        case 'm':
+            ret = etmemd_deal_systemctl();
             break;
         case '?':
             printf("error: parse parameters failed\n");
@@ -99,12 +103,13 @@ static int etmemd_parse_check_result(int params_cnt, int argc, const bool *is_he
 
 int etmemd_parse_cmdline(int argc, char *argv[], bool *is_help)
 {
-    const char *op_str = "s:l:h";
+    const char *op_str = "s:l:mh";
     int params_cnt = 0;
     int opt, ret;
     struct option long_options[] = {
         {"socket", required_argument, NULL, 's'},
         {"log-level", required_argument, NULL, 'l'},
+        {"mode-systemctl", no_argument, NULL, 'm'},
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0},
     };
