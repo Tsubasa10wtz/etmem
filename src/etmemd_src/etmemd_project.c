@@ -10,7 +10,7 @@
  * See the Mulan PSL v2 for more details.
  * Author: louhongxiang
  * Create: 2019-12-10
- * Description: Memigd project API.
+ * Description: Etmemd project API.
  ******************************************************************************/
 
 #include <stdio.h>
@@ -32,6 +32,8 @@
 #define MAX_INTERVAL_VALUE  1200
 #define MAX_SLEEP_VALUE     1200
 #define MAX_LOOP_VALUE      120
+
+#define MAX_OBJ_NAME_LEN    64
 
 static SLIST_HEAD(project_list, project) g_projects = SLIST_HEAD_INITIALIZER(g_projects);
 
@@ -76,7 +78,7 @@ static struct task *get_task_by_name(struct project *proj, struct engine *eng, c
     return NULL;
 }
 
-static char *get_obj_key(char *obj_name, const char *group_name)
+static const char *get_obj_key(const char *obj_name, const char *group_name)
 {
     if (strcmp(obj_name, group_name) == 0) {
         return "name";
@@ -85,46 +87,66 @@ static char *get_obj_key(char *obj_name, const char *group_name)
     }
 }
 
-static enum opt_result project_of_group(GKeyFile *config, const char *group_name, struct project **proj)
+static enum opt_result get_name_by_key(GKeyFile *config, const char *group_name, const char *key, char **name)
 {
-    *proj = NULL;
-    char *proj_name = NULL;
-    char *key = NULL;
-
-    key = get_obj_key(PROJ_GROUP, group_name);
     if (g_key_file_has_key(config, group_name, key, NULL) == FALSE) {
-        etmemd_log(ETMEMD_LOG_ERR, "project name is not set for %s\n", group_name);
+        etmemd_log(ETMEMD_LOG_ERR, "key %s is not set in group %s\n", key, group_name);
         return OPT_INVAL;
     }
 
-    proj_name = g_key_file_get_string(config, group_name, key, NULL);
-    if (proj_name == NULL) {
-        etmemd_log(ETMEMD_LOG_ERR, "get project name from %s fail\n", group_name);
-        return OPT_INTER_ERR;
+    *name = g_key_file_get_string(config, group_name, key, NULL);
+    if (*name == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "get value of key %s from group %s fail\n", key, group_name);
+        return OPT_INVAL;
+    }
+    if (strlen(*name) > MAX_OBJ_NAME_LEN) {
+        etmemd_log(ETMEMD_LOG_ERR, "name len should not be greater than %d\n", MAX_OBJ_NAME_LEN);
+        free(*name);
+        return OPT_INVAL;
+    }
+
+    return OPT_SUCCESS;
+}
+
+static enum opt_result get_obj_name(GKeyFile *config, const char *group_name, const char *obj, char **name)
+{
+    const char *key = get_obj_key(obj, group_name);
+
+    return get_name_by_key(config, group_name, key, name);
+}
+
+static enum opt_result project_of_group(GKeyFile *config, const char *group_name, struct project **proj)
+{
+    char *proj_name = NULL;
+    enum opt_result ret;
+
+    ret = get_obj_name(config, group_name, PROJ_GROUP, &proj_name);
+    if (ret != OPT_SUCCESS) {
+        return ret;
     }
 
     *proj = get_proj_by_name(proj_name);
-
     free(proj_name);
     return OPT_SUCCESS;
 }
 
 static enum opt_result engine_of_group(GKeyFile *config, char *group_name, struct project *proj, struct engine **eng)
 {
-    char *key = NULL;
     char *eng_name = NULL;
-    *eng = NULL;
+    enum opt_result ret;
 
-    key = get_obj_key(ENG_GROUP, group_name);
-    if (g_key_file_has_key(config, group_name, key, NULL) == FALSE) {
-        etmemd_log(ETMEMD_LOG_ERR, "engine is not set for %s\n", group_name);
-        return OPT_INVAL;
+    ret = get_obj_name(config, group_name, ENG_GROUP, &eng_name);
+    if (ret != OPT_SUCCESS) {
+        return ret;
     }
 
-    eng_name = g_key_file_get_string(config, group_name, key, NULL);
-    if (eng_name == NULL) {
-        etmemd_log(ETMEMD_LOG_ERR, "get engine name from %s fail\n", group_name);
-        return OPT_INTER_ERR;
+    // real engine name is set with "eng_name" for thirdparty engine
+    if (strcmp(eng_name, "thirdparty") == 0 && strcmp(group_name, ENG_GROUP) == 0) {
+        free(eng_name);
+        ret = get_name_by_key(config, ENG_GROUP, "eng_name", &eng_name);
+        if (ret != OPT_SUCCESS) {
+            return ret;
+        }
     }
 
     *eng = get_eng_by_name(proj, eng_name);
@@ -136,19 +158,11 @@ static enum opt_result task_of_group(GKeyFile *config, char *group_name,
         struct project *proj, struct engine *eng, struct task **tk)
 {
     char *task_name = NULL;
-    char *key = NULL;
-    *tk = NULL;
+    enum opt_result ret;
 
-    key = get_obj_key(TASK_GROUP, group_name);
-    if (g_key_file_has_key(config, group_name, key, NULL) == FALSE) {
-        etmemd_log(ETMEMD_LOG_ERR, "task name is not set for %s\n", group_name);
-        return OPT_INVAL;
-    }
-
-    task_name = g_key_file_get_string(config, group_name, key, NULL);
-    if (task_name == NULL) {
-        etmemd_log(ETMEMD_LOG_ERR, "get task name from %s fail\n", group_name);
-        return OPT_INTER_ERR;
+    ret = get_obj_name(config, group_name, TASK_GROUP, &task_name);
+    if (ret != OPT_SUCCESS) {
+        return ret;
     }
 
     *tk = get_task_by_name(proj, eng, task_name);

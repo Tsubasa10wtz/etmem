@@ -18,6 +18,6 @@
 
 #include "etmemd_engine.h"
 
-int fill_engine_type_cslide(struct engine *eng);
+int fill_engine_type_cslide(struct engine *eng, GKeyFile *config);
 
 #endif

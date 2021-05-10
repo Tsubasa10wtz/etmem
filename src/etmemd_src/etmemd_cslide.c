@@ -10,7 +10,7 @@
  * See the Mulan PSL v2 for more details.
  * Author: shikemeng
  * Create: 2021-4-19
- * Description: Memigd cslide API.
+ * Description: Etmemd cslide API.
  ******************************************************************************/
 
 #include <stdlib.h>
@@ -2153,7 +2153,7 @@ struct engine_ops g_cslide_eng_ops = {
     .eng_mgt_func = cslide_engine_do_cmd,
 };
 
-int fill_engine_type_cslide(struct engine *eng)
+int fill_engine_type_cslide(struct engine *eng, GKeyFile *config)
 {
     eng->ops = &g_cslide_eng_ops;
     eng->engine_type = CSLIDE_ENGINE;

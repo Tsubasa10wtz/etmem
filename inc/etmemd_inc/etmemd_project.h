@@ -16,25 +16,14 @@
 #ifndef ETMEMD_PROJECT_H
 #define ETMEMD_PROJECT_H
 
-#include <sys/queue.h>
 #include "etmemd_task.h"
 #include "etmemd_engine.h"
+#include "etmemd_project_exp.h"
 
 /* set the length of project name to 32 */
 #define PROJECT_NAME_MAX_LEN  32
 #define FILE_NAME_MAX_LEN 256
 #define PROJECT_SHOW_COLM_MAX 128
-
-struct project {
-    char *name;
-    int interval;
-    int loop;
-    int sleep;
-    bool start;
-    struct engine *engs;
-
-    SLIST_ENTRY(project) entry;
-};
 
 enum opt_result {
     OPT_SUCCESS = 0,

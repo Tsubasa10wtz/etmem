@@ -558,7 +558,7 @@ static void etmemd_rpc_handle(int sock_fd)
     return;
 }
 
-int check_socket_permission(int sock_fd) {
+static int check_socket_permission(int sock_fd) {
     struct ucred cred;
     socklen_t len;
     ssize_t rc;
