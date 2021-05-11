@@ -31,6 +31,9 @@
 #define ETMEM_RPC_SEND_BUF_LEN 512
 #define ETMEM_RPC_CONN_TIMEOUT 10
 
+#define SUCCESS_CHAR (0xff)
+#define FAIL_CHAR (0xfe)
+
 static int etmem_client_conn(const struct mem_proj *proj, int sockfd)
 {
     struct sockaddr_un svr_addr;
@@ -144,14 +147,6 @@ EXIT:
     return ret;
 }
 
-static bool etmem_recv_find_fail_keyword(const char *recv_msg)
-{
-    if (strstr(recv_msg, "error") != NULL) {
-        return true;
-    }
-    return false;
-}
-
 static int etmem_client_recv(int sockfd)
 {
     ssize_t recv_size;
@@ -159,6 +154,7 @@ static int etmem_client_recv(int sockfd)
     char *recv_msg = NULL;
     uint8_t *recv_buf = NULL;
     size_t recv_len = ETMEM_RPC_RECV_BUF_LEN;
+    bool done = false;
 
     recv_buf = (uint8_t *)calloc(recv_len, sizeof(uint8_t));
     if (recv_buf == NULL) {
@@ -166,27 +162,36 @@ static int etmem_client_recv(int sockfd)
         return -1;
     }
 
-    while (true) {
+    while (!done) {
         recv_size = recv(sockfd, recv_buf, recv_len - 1, 0);
         if (recv_size < 0) {
             perror("recv failed:");
             goto EXIT;
         }
         if (recv_size == 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                printf("recv timeout:\n");
-            }
-            ret = 0;
+            printf("connection closed by peer\n");
             goto EXIT;
         }
 
         recv_msg = (char *)recv_buf;
         recv_msg[recv_size] = '\0';
-        printf("%s\n", recv_msg);
-        if (etmem_recv_find_fail_keyword(recv_msg)) {
-            printf("error occurs when getting response from etmemd server\n");
-            goto EXIT;
+
+        // check and erease finish flag
+        switch (recv_msg[recv_size - 1]) {
+            case (char)SUCCESS_CHAR:
+                ret = 0;
+                done = true;
+                recv_msg[recv_size - 1] = '\0';
+                break;
+            case (char)FAIL_CHAR:
+                done = true;
+                recv_msg[recv_size - 1] = '\n';
+                break;
+            default:
+                break;
         }
+
+        printf("%s", recv_msg);
     }
 
 EXIT:

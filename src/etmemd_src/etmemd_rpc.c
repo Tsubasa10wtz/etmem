@@ -35,6 +35,9 @@
 #define RPC_CLIENT_MAX    1
 #define RPC_BUFF_LEN_MAX  512
 
+#define SUCCESS_CHAR (0xff)
+#define FAIL_CHAR (0Xfe)
+
 static bool g_exit = true;
 static char *g_sock_name = NULL;
 static int g_sock_fd;
@@ -58,7 +61,6 @@ struct server_rpc_parser g_rpc_parser[] = {
 };
 
 struct rpc_resp_msg g_resp_msg_arr[] = {
-    {OPT_SUCCESS, "success"},
     {OPT_INVAL, "error: invalid parameters"},
     {OPT_PRO_EXISTED, "error: project has been existed"},
     {OPT_PRO_NOEXIST, "error: project is not exist"},
@@ -533,10 +535,7 @@ static void etmemd_rpc_send_response_msg(int sock_fd, enum opt_result result)
 {
     int i = 0;
     ssize_t ret = -1;
-
-    if (result == OPT_SUCCESS) {
-        return;
-    }
+    char finish_tag;
 
     while (g_resp_msg_arr[i].msg != NULL) {
         if (result != g_resp_msg_arr[i].result) {
@@ -545,12 +544,22 @@ static void etmemd_rpc_send_response_msg(int sock_fd, enum opt_result result)
         }
 
         ret = send(sock_fd, g_resp_msg_arr[i].msg, strlen(g_resp_msg_arr[i].msg), 0);
+        if (ret < 0) {
+            etmemd_log(ETMEMD_LOG_ERR, "send response to client fail, error(%s)\n",
+                    strerror(errno));
+        }
         break;
     }
 
-    if (ret < 0) {
-        etmemd_log(ETMEMD_LOG_ERR, "send response to client fail, error(%s)\n",
-                   strerror(errno));
+    // notify result with finish tag
+    if (result == OPT_SUCCESS) {
+        finish_tag = SUCCESS_CHAR;
+    } else {
+        finish_tag = FAIL_CHAR;
+    }
+    ret = send(sock_fd, &finish_tag, 1, 0);
+    if (ret <= 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "send finish tag fail\n");
     }
     return;
 }
