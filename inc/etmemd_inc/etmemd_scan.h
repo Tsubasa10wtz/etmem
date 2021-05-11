@@ -19,9 +19,8 @@
 #include <fcntl.h>
 #include "etmemd.h"
 #include "etmemd_task.h"
+#include "etmemd_scan_exp.h"
 
-#define VMA_PATH_STR_LEN        256
-#define VMA_MAJOR_MINOR_LEN     8
 #define VMA_SEG_CNT_MAX         6
 #define VMA_PERMS_STR_LEN       5
 #define VMA_ADDR_STR_LEN        17
@@ -35,15 +34,7 @@
 #define SMAPS_FILE              "/smaps"
 #define VMFLAG_HEAD             "VmFlags"
 
-#define SCAN_AS_HUGE            O_LARGEFILE
-
-enum {
-    VMA_STAT_READ = 0,
-    VMA_STAT_WRITE,
-    VMA_STAT_EXEC,
-    VMA_STAT_MAY_SHARE,
-    VMA_STAT_INIT,
-};
+#define ALL_SCAN_FLAGS          (SCAN_AS_HUGE | SCAN_IGN_HOST)
 
 enum page_idle_type {
     PTE_ACCESS = 0,     /* 4k page */
@@ -66,39 +57,11 @@ enum access_type_weight {
     WRITE_TYPE_WEIGHT = 3,
 };
 
-/*
- * vma struct
- * */
-struct vma {
-    uint64_t start;                     /* address start */
-    uint64_t end;                       /* address end */
-    bool stat[VMA_STAT_INIT];           /* vm area permissions */
-    uint64_t offset;                    /* vm area offset */
-    uint64_t inode;                     /* vm area inode */
-    char path[VMA_PATH_STR_LEN];        /* path name */
-    char major[VMA_MAJOR_MINOR_LEN];    /* device number major part */
-    char minor[VMA_MAJOR_MINOR_LEN];    /* device number minor part */
-
-    struct vma *next;                   /* point to next vma */
-};
-
 struct walk_address {
     uint64_t walk_start;                /* walk address start */
     uint64_t walk_end;                  /* walk address end */
     uint64_t last_walk_end;             /* last walk address end */
 };
-
-/*
- * vmas struct
- * */
-struct vmas {
-    uint64_t vma_cnt;           /* number of vm area */
-
-    struct vma *vma_list;       /* vm area list */
-};
-
-/* etmemd_free_page_refs need to be called by the handler who called etmemd_do_scan() successfully */
-void etmemd_free_page_refs(struct page_refs *pf);
 
 /* the caller need to judge value returned by etmemd_do_scan(), NULL means fail. */
 struct page_refs *etmemd_do_scan(const struct task_pid *tpid, const struct task *tk);
@@ -107,7 +70,7 @@ struct page_refs *etmemd_do_scan(const struct task_pid *tpid, const struct task 
 void free_vmas(struct vmas *vmas);
 
 struct page_refs **walk_vmas(int fd, struct walk_address *walk_address, struct page_refs **pf, unsigned long *use_rss);
-int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **page_refs, unsigned long *use_rss);
+int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **page_refs, unsigned long *use_rss, int flags);
 
 int split_vmflags(char ***vmflags_array, char *vmflags);
 struct vmas *get_vmas_with_flags(const char *pid, char **vmflags_array, int vmflags_num, bool is_anon_only);

@@ -35,6 +35,8 @@
 #define VMFLAG_MAX_LEN 100
 #define VMFLAG_MAX_NUM 30
 
+static bool g_exp_scan_inited = false;
+
 static const enum page_type g_page_type_by_idle_kind[] = {
     PTE_TYPE,
     PMD_TYPE,
@@ -403,6 +405,25 @@ struct vmas *get_vmas(const char *pid)
     return get_vmas_with_flags(pid, NULL, 0, true);
 }
 
+struct vmas *etmemd_get_vmas(const char *pid, char *vmflags_array[], int vmflags_num, bool is_anon_only)
+{
+    int i;
+
+    if (pid == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "etmemd_get_vmas pid param is NULL\n");
+        return NULL;
+    }
+
+    for (i = 0; i < vmflags_num; i++) {
+        if (vmflags_array[i] == NULL) {
+            etmemd_log(ETMEMD_LOG_ERR, "etmemd_get_vmas vmflags_array[%d] is NULL\n", i);
+            return NULL;
+        }
+    }
+
+    return get_vmas_with_flags(pid, vmflags_array, vmflags_num, is_anon_only);
+}
+
 static u_int64_t get_address_from_buf(const unsigned char *buf, u_int64_t index)
 {
     u_int64_t address;
@@ -633,7 +654,7 @@ struct page_refs **walk_vmas(int fd,
 * this parameter is used only in the dynamic engine to calculate the swap-in rate.
 * In other policies, NULL can be directly transmitted.
 * */
-int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **page_refs, unsigned long *use_rss)
+int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **page_refs, unsigned long *use_rss, int flags)
 {
     u_int64_t i;
     FILE *scan_fp = NULL;
@@ -642,7 +663,7 @@ int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **p
     struct page_refs **tmp_page_refs = NULL;
     struct walk_address walk_address = {0, 0, 0};
 
-    scan_fp = etmemd_get_proc_file(pid, IDLE_SCAN_FILE, 0, "r");
+    scan_fp = etmemd_get_proc_file(pid, IDLE_SCAN_FILE, flags, "r");
     if (scan_fp == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "open %s file fail\n", IDLE_SCAN_FILE);
         return -1;
@@ -683,6 +704,21 @@ int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **p
     return 0;
 }
 
+int etmemd_get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **page_refs, int flags)
+{
+    if (!g_exp_scan_inited) {
+        etmemd_log(ETMEMD_LOG_ERR, "scan module is not inited before etmemd_get_page_refs\n");
+        return -1;
+    }
+
+    if (vmas == NULL || pid == NULL || page_refs == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "NULL param is found in etmemd_get_page_refs\n");
+        return -1;
+    }
+
+    return get_page_refs(vmas, pid, page_refs, NULL, flags & ALL_SCAN_FLAGS);
+}
+
 void etmemd_free_page_refs(struct page_refs *pf)
 {
     struct page_refs *tmp_pf = NULL;
@@ -721,7 +757,7 @@ struct page_refs *etmemd_do_scan(const struct task_pid *tpid, const struct task 
 
     /* loop for scanning idle_pages to get result of memory access. */
     for (i = 0; i < tk->eng->proj->loop; i++) {
-        ret = get_page_refs(vmas, pid, &page_refs, NULL);
+        ret = get_page_refs(vmas, pid, &page_refs, NULL, 0);
         if (ret != 0) {
             etmemd_log(ETMEMD_LOG_ERR, "scan operation failed\n");
             /* free page_refs nodes already exist */
@@ -735,6 +771,11 @@ struct page_refs *etmemd_do_scan(const struct task_pid *tpid, const struct task 
     free_vmas(vmas);
 
     return page_refs;
+}
+
+void etmemd_free_vmas(struct vmas *vmas)
+{
+    free_vmas(vmas);
 }
 
 void clean_page_refs_unexpected(void *arg)
@@ -772,4 +813,24 @@ struct page_refs *add_page_refs_into_memory_grade(struct page_refs *page_refs, s
 
     /* return the next page_refs of the one that passed in */
     return tmp;
+}
+
+int etmemd_scan_init(void)
+{
+    if (g_exp_scan_inited) {
+        etmemd_log(ETMEMD_LOG_ERR, "scan module already inited\n");
+        return -1;
+    }
+
+    if (init_g_page_size() == -1) {
+        return -1;
+    }
+
+    g_exp_scan_inited = true;
+    return 0;
+}
+
+void etmemd_scan_exit(void)
+{
+    g_exp_scan_inited = false;
 }

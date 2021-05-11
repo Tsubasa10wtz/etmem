@@ -55,7 +55,12 @@ add_executable(etmemd
 add_executable(etmem
  ${ETMEM_SRC})
 
+add_library(etmemd_scan SHARED
+ ${ETMEMD_SRC})
+
 set(EXECUTABLE_OUTPUT_PATH ${BUILD_DIR}/bin)
+
+set(LIBRARY_OUTPUT_PATH ${BUILD_DIR}/lib)
 
 include(FindPkgConfig)
 pkg_search_module(GLIB2 REQUIRED glib-2.0)
@@ -66,6 +71,10 @@ target_include_directories(etmemd PRIVATE
 
 target_include_directories(etmem PRIVATE
  ${PROJECT_SOURCE_DIR}/inc/etmem_inc)
+
+target_include_directories(etmemd_scan PRIVATE
+ ${PROJECT_SOURCE_DIR}/inc/etmemd_inc
+ ${GLIB2_INCLUDE_DIRS})
 
 target_compile_options(etmemd PRIVATE -fsigned-char -fno-omit-frame-pointer -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wmissing-declarations -fno-strict-aliasing -Werror -Wformat -Wformat-security -D_GNU_SOURCE -fPIE -pie -fPIC -fstack-protector-strong -fno-common -DNDEBUG -O2 -D_FORTIFY_SOURCE=2 -Wall -Werror -Wl,-z,relro,-z,now,-z,noexecstack -Wtrampolines -pthread -Wno-pointer-sign -Wstrict-prototypes -Wold-style-definition -std=gnu99)
 
@@ -96,4 +105,20 @@ if( ${ARCHITECTURE} STREQUAL "aarch64" )
  target_compile_options(etmem PRIVATE -march=armv8-a)
 else()
  target_compile_options(etmem PRIVATE -march=core-avx-i -m64)
+endif()
+
+target_compile_options(etmemd_scan PRIVATE -fsigned-char -fno-omit-frame-pointer -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wmissing-declarations -fno-strict-aliasing -Werror -Wformat -Wformat-security -D_GNU_SOURCE -fPIE -pie -fPIC -fstack-protector-strong -fno-common -DNDEBUG -O2 -D_FORTIFY_SOURCE=2 -Wall -Werror -Wl,-z,relro,-z,now,-z,noexecstack -Wtrampolines -pthread -Wno-pointer-sign -Wstrict-prototypes -Wold-style-definition -std=gnu99 -fPIC -shared)
+
+
+if(CONFIG_DEBUG STREQUAL "y")
+ target_compile_options(etmemd_scan PRIVATE -g)
+endif()
+
+set_target_properties(etmemd_scan PROPERTIES LINK_FLAGS "-s -fPIE -pie -fPIC -Wl,-z,relro,-z,now,-z,noexecstack -Wtrampolines -Wl,--version-script=${ETMEMD_SRC_DIR}/etmemd_scan.version")
+target_link_libraries(etmemd_scan PRIVATE pthread dl rt boundscheck numa ${GLIB2_LIBRARIES})
+
+if( ${ARCHITECTURE} STREQUAL "aarch64" )
+ target_compile_options(etmemd_scan PRIVATE -march=armv8-a)
+else()
+ target_compile_options(etmemd_scan PRIVATE -march=core-avx-i -m64)
 endif()
