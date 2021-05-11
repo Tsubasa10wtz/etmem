@@ -55,5 +55,6 @@ int etmemd_parse_sock_name(const char *sock_name);
 int etmemd_rpc_server(void);
 bool etmemd_sock_name_set(void);
 void etmemd_sock_name_free(void);
+int etmemd_deal_systemctl(void);
 
 #endif

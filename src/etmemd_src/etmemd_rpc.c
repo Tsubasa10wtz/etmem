@@ -19,6 +19,9 @@
 #include <sys/socket.h>
 #include <signal.h>
 #include <glib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "securec.h"
 #include "etmemd_rpc.h"
 #include "etmemd_project.h"
@@ -35,6 +38,8 @@
 static bool g_exit = true;
 static char *g_sock_name = NULL;
 static int g_sock_fd;
+static int g_fd[PIPE_FD_LEN];
+static int g_use_systemctl = 0;
 struct server_rpc_params g_rpc_params;
 
 struct rpc_resp_msg {
@@ -66,6 +71,12 @@ struct rpc_resp_msg g_resp_msg_arr[] = {
     {OPT_INTER_ERR, "error: etmemd has internal error, see reason details in messages"},
     {OPT_RET_END, NULL},
 };
+
+int etmemd_deal_systemctl(void)
+{
+    g_use_systemctl = 1;
+    return 0;
+}
 
 static void etmemd_set_flag(int s)
 {
@@ -637,8 +648,69 @@ RPC_EXIT:
     return ret;
 }
 
+static int rpc_deal_parent(void)
+{
+    int len, handle, pid;
+    char pid_s[PID_STR_MAX_LEN];
+    int val = 0;
+
+    /* in systemctl mode, parent process need to write child pid */
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, g_fd) < 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "Error initing pipefd\n");
+        return -1;
+    }
+
+    pid = fork();
+    if (pid != 0) {
+        if ((handle = open("/run/etmemd.pid", O_WRONLY | O_CREAT | O_TRUNC, S_IREAD | S_IWRITE)) == -1) {
+            etmemd_log(ETMEMD_LOG_ERR, "Error opening file\n");
+            exit(1);
+        }
+
+        if ((len = sprintf_s(pid_s, PID_STR_MAX_LEN, "%d", pid)) <= 0) {
+            etmemd_log(ETMEMD_LOG_ERR, "sprintf for pid failed\n");
+            exit(1);
+        }
+
+        if ((write(handle, pid_s, len)) != len) {
+            etmemd_log(ETMEMD_LOG_ERR, "Error writing to the file\n");
+            exit(1);
+        }
+
+        close(g_fd[1]);
+        if (read(g_fd[0], &val, sizeof(val)) <= 0) {
+            etmemd_log(ETMEMD_LOG_ERR, "Error reading to the file\n");
+            exit(1);
+        }
+
+        if (val == 1) {
+            exit(0);
+        }
+    }
+    return 0;
+}
+
+static int rpc_deal_child(void)
+{
+    int val = 1;
+    close(g_fd[0]);
+    if (write(g_fd[1], &val, sizeof(val)) <= 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "Error writing pipe fd\n");
+        return -1;
+    }
+    close(g_fd[1]);
+    return 0;
+}
+
 int etmemd_rpc_server(void)
 {
+    /* in systemctl mode, parent process need to write child pid */
+    if (g_use_systemctl) {
+        if (rpc_deal_parent() != 0) {
+            etmemd_log(ETMEMD_LOG_ERR, "Error deal by parent process\n");
+            return -1;
+        }
+    }
     if (!etmemd_sock_name_set()) {
         etmemd_log(ETMEMD_LOG_ERR, "socket name of rpc must be provided\n");
         return -1;
@@ -659,6 +731,14 @@ int etmemd_rpc_server(void)
                    g_sock_name, strerror(errno));
         etmemd_safe_free((void **)&g_sock_name);
         return -1;
+    }
+
+    /* in systemctl mode, child process need to notify parent to exit  */
+    if (g_use_systemctl) {
+        if (rpc_deal_child() != 0) {
+            etmemd_log(ETMEMD_LOG_ERR, "Error sending message to parent process\n");
+            return -1;
+        }
     }
 
     while (!g_exit) {
