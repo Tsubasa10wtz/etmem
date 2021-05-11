@@ -58,19 +58,19 @@ void etmemd_log(enum log_level log_level, const char *format, ...)
 
     switch (log_level) {
         case ETMEMD_LOG_DEBUG:
-            openlog("[etmemd_debug] ", LOG_PID, LOG_USER);
+            openlog("[etmemd] ", LOG_PID, LOG_USER);
             vsyslog(LOG_DEBUG, format, args_in);
             break;
         case ETMEMD_LOG_INFO:
-            openlog("[etmemd_info] ", LOG_PID, LOG_USER);
+            openlog("[etmemd] ", LOG_PID, LOG_USER);
             vsyslog(LOG_INFO, format, args_in);
             break;
         case ETMEMD_LOG_WARN:
-            openlog("[etmemd_warning] ", LOG_PID, LOG_USER);
+            openlog("[etmemd] ", LOG_PID, LOG_USER);
             vsyslog(LOG_WARNING, format, args_in);
             break;
         case ETMEMD_LOG_ERR:
-            openlog("[etmemd_error] ", LOG_PID, LOG_USER);
+            openlog("[etmemd] ", LOG_PID, LOG_USER);
             vsyslog(LOG_ERR, format, args_in);
             break;
         default:
