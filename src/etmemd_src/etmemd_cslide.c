@@ -1937,7 +1937,7 @@ static int fill_task_scan_flags(void *obj, void *val)
     } else if (strcmp(ign_host, "no") != 0) {
         etmemd_log(ETMEMD_LOG_ERR, "ign_host : not support %s\n", ign_host);
         etmemd_log(ETMEMD_LOG_ERR, "ign_host : only support yes/no\n");
-        return -1;
+        ret = -1;
     }
 
     free(val);

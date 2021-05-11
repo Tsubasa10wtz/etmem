@@ -34,6 +34,7 @@
 #define PMD_IDLE_PTES_PARAMETER 512
 #define VMFLAG_MAX_LEN 100
 #define VMFLAG_MAX_NUM 30
+#define VMFLAG_VALID_LEN 2
 
 static bool g_exp_scan_inited = false;
 
@@ -272,6 +273,7 @@ static bool is_vma_with_vmflags(FILE *fp, char *vmflags_array[], int vmflags_num
     char parse_line[FILE_LINE_MAX_LEN];
     size_t len;
     int i;
+    char *flags_start = NULL;
 
     len = strlen(VMFLAG_HEAD);
     while (fgets(parse_line, FILE_LINE_MAX_LEN - 1, fp) != NULL) {
@@ -283,9 +285,10 @@ static bool is_vma_with_vmflags(FILE *fp, char *vmflags_array[], int vmflags_num
             continue;
         }
 
+        flags_start = strstr(parse_line, ":");
         /* check any flag in flags is set */
         for (i = 0; i < vmflags_num; i++) {
-            if (strstr(parse_line, vmflags_array[i]) == NULL) {
+            if (strstr(flags_start + 1, vmflags_array[i]) == NULL) {
                 return false;
             }
         }
@@ -405,6 +408,20 @@ struct vmas *get_vmas(const char *pid)
     return get_vmas_with_flags(pid, NULL, 0, true);
 }
 
+static bool is_flag_valid(char *flag)
+{
+    if (strstr(flag, " ") != NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "flag %s include space\n", flag);
+        return false;
+    }
+    if (strlen(flag) != VMFLAG_VALID_LEN) {
+        etmemd_log(ETMEMD_LOG_ERR, "flag %s len is not 2\n", flag);
+        return false;
+    }
+
+    return true;
+}
+
 struct vmas *etmemd_get_vmas(const char *pid, char *vmflags_array[], int vmflags_num, bool is_anon_only)
 {
     int i;
@@ -417,6 +434,10 @@ struct vmas *etmemd_get_vmas(const char *pid, char *vmflags_array[], int vmflags
     for (i = 0; i < vmflags_num; i++) {
         if (vmflags_array[i] == NULL) {
             etmemd_log(ETMEMD_LOG_ERR, "etmemd_get_vmas vmflags_array[%d] is NULL\n", i);
+            return NULL;
+        }
+        if (!is_flag_valid(vmflags_array[i])) {
+            etmemd_log(ETMEMD_LOG_ERR, "etmemd_get_vmas flag %s invalid\n", vmflags_array[i]);
             return NULL;
         }
     }

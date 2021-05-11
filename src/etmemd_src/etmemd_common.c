@@ -32,7 +32,7 @@
 #include "etmemd_rpc.h"
 #include "etmemd_log.h"
 
-#define IDLE_SCAN_MAGIC         0X66
+#define IDLE_SCAN_MAGIC         0x66
 #define IDLE_SCAN_ADD_FLAGS     _IOW(IDLE_SCAN_MAGIC, 0x0, unsigned int)
 #define IDLE_SCAN_REMOVE_FLAGS  _IOW(IDLE_SCAN_MAGIC, 0x1, unsigned int)
 
