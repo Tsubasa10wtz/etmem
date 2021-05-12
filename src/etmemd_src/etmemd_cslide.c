@@ -98,6 +98,7 @@ struct cslide_task_params {
         char **vmflags_array;
         int vmflags_num;
     };
+    int scan_flags;
 };
 
 struct vma_pf {
@@ -1285,13 +1286,14 @@ static int cslide_scan_vmas(struct cslide_pid_params *params)
     struct walk_address walk_address;
     uint64_t i;
     int fd;
+    struct cslide_task_params *task_params = params->task_params;
 
     if (snprintf_s(pid, PID_STR_MAX_LEN, PID_STR_MAX_LEN - 1, "%u", params->pid) <= 0) {
         etmemd_log(ETMEMD_LOG_ERR, "snpintf pid %u fail\n", params->pid);
         return -1;
     }
 
-    scan_fp = etmemd_get_proc_file(pid, IDLE_SCAN_FILE, SCAN_AS_HUGE, "r");
+    scan_fp = etmemd_get_proc_file(pid, IDLE_SCAN_FILE, task_params->scan_flags, "r");
     if (scan_fp == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "open %s file for pid %u fail\n", IDLE_SCAN_FILE, params->pid);
         return -1;
@@ -1922,9 +1924,30 @@ static int fill_task_vm_flags(void *obj, void *val)
     return 0;
 }
 
+static int fill_task_scan_flags(void *obj, void *val)
+{
+    struct cslide_task_params *params = (struct cslide_task_params *)obj;
+    char *ign_host = (char *)val;
+    int ret = 0;
+
+    params->scan_flags |= SCAN_AS_HUGE;
+
+    if (strcmp(ign_host, "yes") == 0) {
+        params->scan_flags |= SCAN_IGN_HOST;
+    } else if (strcmp(ign_host, "no") != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "ign_host : not support %s\n", ign_host);
+        etmemd_log(ETMEMD_LOG_ERR, "ign_host : only support yes/no\n");
+        ret = -1;
+    }
+
+    free(val);
+    return ret;
+}
+
 static struct config_item g_cslide_task_config_items[] = {
     {"vm_flags", STR_VAL, fill_task_vm_flags, false},
     {"anon_only", STR_VAL, fill_task_anon_only, false},
+    {"ign_host", STR_VAL, fill_task_scan_flags, false},
 };
 
 static int cslide_fill_task(GKeyFile *config, struct task *tk)

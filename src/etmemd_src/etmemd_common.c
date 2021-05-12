@@ -24,11 +24,17 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
 
 #include "securec.h"
 #include "etmemd_common.h"
 #include "etmemd_rpc.h"
 #include "etmemd_log.h"
+
+#define IDLE_SCAN_MAGIC         0x66
+#define IDLE_SCAN_ADD_FLAGS     _IOW(IDLE_SCAN_MAGIC, 0x0, unsigned int)
+#define IDLE_SCAN_REMOVE_FLAGS  _IOW(IDLE_SCAN_MAGIC, 0x1, unsigned int)
 
 static void usage(void)
 {
@@ -233,9 +239,14 @@ FILE *etmemd_get_proc_file(const char *pid, const char *file, int flags, const c
         return NULL;
     }
 
-    fd = open(file_name, flags);
+    fd = open(file_name, 0);
     if (fd < 0) {
         etmemd_log(ETMEMD_LOG_ERR, "open file %s fail\n", file_name);
+        goto free_file_name;
+    }
+    if (flags != 0 && ioctl(fd, IDLE_SCAN_ADD_FLAGS, &flags) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "set idle flags for %s fail with %s\n", pid, strerror(errno));
+        close(fd);
         goto free_file_name;
     }
     fp = fdopen(fd, mode);

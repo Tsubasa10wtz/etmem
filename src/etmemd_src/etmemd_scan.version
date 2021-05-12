@@ -1,0 +1,4 @@
+libetmemd_scan {
+        global: etmemd_scan_init; etmemd_scan_exit; etmemd_get_vmas; etmemd_free_vmas; etmemd_get_page_refs; etmemd_free_page_refs;
+        local:*;
+};
