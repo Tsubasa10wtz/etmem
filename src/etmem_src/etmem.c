@@ -29,7 +29,7 @@ SLIST_HEAD(etmem_obj_list, etmem_obj) g_etmem_objs;
 
 static void usage(void)
 {
-    fprintf(stderr,
+    fprintf(stdout,
             "\nUsage:\n"
             "    etmem OBJECT COMMAND\n"
             "    etmem help\n"

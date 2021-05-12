@@ -21,6 +21,7 @@
 #include <sys/time.h>
 #include <sys/un.h>
 #include <errno.h>
+#include <string.h>
 #include "securec.h"
 #include "etmem_rpc.h"
 
@@ -71,7 +72,7 @@ static int etmem_client_conn(const struct mem_proj *proj, int sockfd)
 
     if (connect(sockfd, (struct sockaddr *)&svr_addr,
                 offsetof(struct sockaddr_un, sun_path) + strlen(proj->sock_name) + 1) < 0) {
-        perror("etmem connect to server failed:");
+        printf("etmem connect to server failed: %s\n", strerror(errno));
         return errno;
     }
 
@@ -137,7 +138,7 @@ static int etmem_client_send(const struct mem_proj *proj, int sockfd)
     }
 
     if (send(sockfd, reg_cmd, reg_cmd_len, 0) < 0) {
-        perror("send failed:");
+        printf("send failed: %s\n", strerror(errno));
         goto EXIT;
     }
     ret = 0;
@@ -165,7 +166,7 @@ static int etmem_client_recv(int sockfd)
     while (!done) {
         recv_size = recv(sockfd, recv_buf, recv_len - 1, 0);
         if (recv_size < 0) {
-            perror("recv failed:");
+            printf("recv failed: %s\n", strerror(errno));
             goto EXIT;
         }
         if (recv_size == 0) {
