@@ -143,7 +143,6 @@ struct cslide_params_factory {
 struct cslide_eng_params {
     struct sys_mem mem;
     struct node_map node_map;
-    int node_watermark;
     int hot_threshold;
     int hot_reserve;    // in MB
     int mig_quota;      // in MB
@@ -1463,65 +1462,6 @@ static int cslide_do_migrate(struct cslide_eng_params *eng_params)
     return 0;
 }
 
-static bool is_node_empty(struct node_mem *mem)
-{
-    return mem->huge_free == mem->huge_total;
-}
-
-static bool is_all_cold_node_empty(struct cslide_eng_params *eng_params)
-{
-    struct sys_mem *mem = &eng_params->mem;
-    struct node_pair *pair = NULL;
-    int i;
-
-    for (i = 0; i < eng_params->node_map.cur_num; i++) {
-        pair = &eng_params->node_map.pair[i];
-        if (!is_node_empty(&mem->node_mem[pair->cold_node])) {
-            return false;
-        }
-    }
-    return true;
-}
-
-static inline bool is_busy(int node_watermark, long long total, long long free)
-{
-    return free * TO_PCT / total < node_watermark;
-}
-
-static bool is_node_busy(int node_watermark, struct node_mem *mem)
-{
-    return is_busy(node_watermark, mem->huge_total, mem->huge_free);
-}
-
-static bool is_any_hot_node_busy(struct cslide_eng_params *eng_params)
-{
-    struct sys_mem *mem = &eng_params->mem;
-    struct node_pair *pair = NULL;
-    int node_watermark = eng_params->node_watermark;
-    int i;
-
-    for (i = 0; i < eng_params->node_map.cur_num; i++) {
-        pair = &eng_params->node_map.pair[i];
-        if (is_node_busy(node_watermark, &mem->node_mem[pair->hot_node])) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-static bool need_migrate(struct cslide_eng_params *eng_params)
-{
-    if (!is_all_cold_node_empty(eng_params)) {
-        return true;
-    }
-    if (is_any_hot_node_busy(eng_params)) {
-        return true;
-    }
-
-    return false;
-}
-
 static void init_host_pages_info(struct cslide_eng_params *eng_params)
 {
     int n;
@@ -1689,11 +1629,6 @@ static void *cslide_main(void *arg)
 
         if (cslide_policy(eng_params) != 0) {
             etmemd_log(ETMEMD_LOG_ERR, "cslide_policy fail\n");
-            goto next;
-        }
-
-        if (!need_migrate(eng_params)) {
-            etmemd_log(ETMEMD_LOG_DEBUG, "no need to migrate\n");
             goto next;
         }
 
@@ -2055,19 +1990,6 @@ err:
     return ret;
 }
 
-static int fill_migrate_watermark(void *obj, void *val)
-{
-    struct cslide_eng_params *params = (struct cslide_eng_params *)obj;
-    int wm = parse_to_int(val);
-
-    if (wm < MIN_WM || wm > MAX_WM) {
-        etmemd_log(ETMEMD_LOG_ERR, "migrate watermark %d invalid\n", wm);
-        return -1;
-    }
-    params->node_watermark = wm;
-    return 0;
-}
-
 static int fill_hot_threshold(void *obj, void *val)
 {
     struct cslide_eng_params *params = (struct cslide_eng_params *)obj;
@@ -2112,7 +2034,6 @@ static int fill_mig_quota(void *obj, void *val)
 
 static struct config_item cslide_eng_config_items[] = {
     {"node_pair", STR_VAL, fill_node_pair, false},
-    {"node_watermark", INT_VAL, fill_migrate_watermark, false},
     {"hot_threshold", INT_VAL, fill_hot_threshold, false},
     {"node_mig_quota", INT_VAL, fill_mig_quota, false},
     {"node_hot_reserve", INT_VAL, fill_hot_reserve, false},
