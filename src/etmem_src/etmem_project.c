@@ -25,7 +25,7 @@
 
 static void project_help(void)
 {
-    fprintf(stderr,
+    fprintf(stdout,
             "\nUsage:\n"
             "    etmem project start [options]\n"
             "    etmem project stop [options]\n"
