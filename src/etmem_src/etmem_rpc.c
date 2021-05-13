@@ -177,7 +177,7 @@ static int etmem_client_recv(int sockfd)
         recv_msg = (char *)recv_buf;
         recv_msg[recv_size] = '\0';
 
-        // check and erease finish flag
+        // check and erase finish flag
         switch (recv_msg[recv_size - 1]) {
             case (char)SUCCESS_CHAR:
                 ret = 0;

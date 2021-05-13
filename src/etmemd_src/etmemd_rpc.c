@@ -546,7 +546,7 @@ static void etmemd_rpc_send_response_msg(int sock_fd, enum opt_result result)
         ret = send(sock_fd, g_resp_msg_arr[i].msg, strlen(g_resp_msg_arr[i].msg), 0);
         if (ret < 0) {
             etmemd_log(ETMEMD_LOG_ERR, "send response to client fail, error(%s)\n",
-                    strerror(errno));
+                       strerror(errno));
         }
         break;
     }
@@ -557,7 +557,7 @@ static void etmemd_rpc_send_response_msg(int sock_fd, enum opt_result result)
     } else {
         finish_tag = FAIL_CHAR;
     }
-    ret = send(sock_fd, &finish_tag, 1, 0);
+    ret = send(sock_fd, &finish_tag, sizeof(finish_tag), 0);
     if (ret <= 0) {
         etmemd_log(ETMEMD_LOG_ERR, "send finish tag fail\n");
     }
