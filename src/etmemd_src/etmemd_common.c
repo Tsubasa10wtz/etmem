@@ -239,17 +239,26 @@ FILE *etmemd_get_proc_file(const char *pid, const char *file, int flags, const c
         return NULL;
     }
 
-    fd = open(file_name, 0);
-    if (fd < 0) {
+    fp = fopen(file_name, mode);
+    if (fp == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "open file %s fail\n", file_name);
         goto free_file_name;
     }
-    if (flags != 0 && ioctl(fd, IDLE_SCAN_ADD_FLAGS, &flags) != 0) {
-        etmemd_log(ETMEMD_LOG_ERR, "set idle flags for %s fail with %s\n", pid, strerror(errno));
-        close(fd);
+
+    fd = fileno(fp);
+    if (fd < 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "get fd of file %s fail\n", file_name);
+        fclose(fp);
+        fp = NULL;
         goto free_file_name;
     }
-    fp = fdopen(fd, mode);
+
+    if (flags != 0 && ioctl(fd, IDLE_SCAN_ADD_FLAGS, &flags) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "set idle flags for %s fail with %s\n", pid, strerror(errno));
+        fclose(fp);
+        fp = NULL;
+        goto free_file_name;
+    }
 
 free_file_name:
     free(file_name);
