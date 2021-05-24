@@ -444,7 +444,7 @@ static int fill_task_threads(void *obj, void *val)
     int max_threads = parse_to_int(val);
     int core;
 
-    if (max_threads < 0) {
+    if (max_threads <= 0) {
         etmemd_log(ETMEMD_LOG_WARN,
                    "Thread count is abnormal, set the default minimum of current thread count to 1\n");
         max_threads = 1;
