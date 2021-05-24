@@ -279,7 +279,7 @@ enum opt_result etmemd_project_add_task(GKeyFile *config)
         goto remove_task;
     }
 
-    if (proj->start && eng->ops->start_task(eng, tk) != 0) {
+    if (proj->start && eng->ops->start_task != NULL && eng->ops->start_task(eng, tk) != 0) {
         etmemd_log(ETMEMD_LOG_ERR, "start added task %s fail\n", tk->name);
         goto clear_task;
     }
