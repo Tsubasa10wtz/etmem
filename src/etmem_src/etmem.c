@@ -127,6 +127,7 @@ int main(int argc, char *argv[])
         if (conf.obj != NULL && strcmp(conf.obj, "help") == 0 &&
             argc == 2) { /* 2 is for param num of "etmem help" */
             err = 0;
+            goto out;
         }
         err = -EINVAL;
         goto out;
