@@ -1445,21 +1445,27 @@ static int cslide_do_migrate(struct cslide_eng_params *eng_params)
     struct cslide_pid_params *iter = NULL;
     struct node_pair *pair = NULL;
     int bind_node, i;
+    int ret = 0;
 
     factory_foreach_working_pid_params(iter, &eng_params->factory) {
         for (i = 0; i < eng_params->node_map.cur_num; i++) {
             pair = &eng_params->node_map.pair[i];
             bind_node = pair->hot_node < pair->cold_node ? pair->hot_node : pair->cold_node;
             if (numa_run_on_node(bind_node) != 0) {
-                etmemd_log(ETMEMD_LOG_ERR, "fail to run on node %d to migrate memory\n", bind_node);
+                etmemd_log(ETMEMD_LOG_INFO, "fail to run on node %d to migrate memory\n", bind_node);
             }
-            migrate_single_task(iter->pid, &iter->memory_grade[i], pair->hot_node, pair->cold_node);
+            ret = migrate_single_task(iter->pid, &iter->memory_grade[i], pair->hot_node, pair->cold_node);
+            if (ret != 0) {
+                goto exit;
+            }
         }
     }
+
+exit:
     if (numa_run_on_node(-1) != 0) {
-        etmemd_log(ETMEMD_LOG_ERR, "fail to run on all node after migrate memory\n");
+        etmemd_log(ETMEMD_LOG_INFO, "fail to run on all node after migrate memory\n");
     }
-    return 0;
+    return ret;
 }
 
 static void init_host_pages_info(struct cslide_eng_params *eng_params)

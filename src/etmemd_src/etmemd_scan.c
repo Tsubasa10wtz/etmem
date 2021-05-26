@@ -27,9 +27,6 @@
 #include "etmemd_log.h"
 #include "securec.h"
 
-#define PTE_SIZE_SHIFT 12
-#define PMD_SIZE_SHIFT 21
-#define PUD_SIZE_SHIFT 30
 #define HEXADECIMAL_RADIX 16
 #define PMD_IDLE_PTES_PARAMETER 512
 #define VMFLAG_MAX_LEN 100
