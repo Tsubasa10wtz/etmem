@@ -23,8 +23,6 @@
 #include "etmem_project.h"
 #include "etmem_engine.h"
 
-#define CMD_POSITION 1
-
 SLIST_HEAD(etmem_obj_list, etmem_obj) g_etmem_objs;
 
 static void usage(void)

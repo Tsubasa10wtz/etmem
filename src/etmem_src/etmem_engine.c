@@ -39,11 +39,11 @@ static void engine_help(void)
             "    5. eng_cmd is supported by engine own.\n");
 }
 
-static int engine_parse_cmd(struct etmem_conf *conf, struct mem_proj *proj)
+static void engine_parse_cmd(struct etmem_conf *conf, struct mem_proj *proj)
 {
     proj->eng_cmd = conf->argv[0];
     proj->cmd = ETMEM_CMD_ENGINE;
-    return 0;
+    return;
 }
 
 static int engine_parse_args(struct etmem_conf *conf, struct mem_proj *proj)
@@ -126,11 +126,7 @@ static int engine_do_cmd(struct etmem_conf *conf)
         return ret;
     }
 
-    ret = engine_parse_cmd(conf, &proj);
-    if (ret != 0) {
-        printf("engine_parse_cmd fail\n");
-        return -1;
-    }
+    engine_parse_cmd(conf, &proj);
 
     ret = engine_parse_args(conf, &proj);
     if (ret != 0) {

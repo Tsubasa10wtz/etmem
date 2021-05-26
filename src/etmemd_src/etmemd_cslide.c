@@ -33,14 +33,9 @@
 
 #define HUGE_1M_SIZE    (1 << 20)
 #define HUGE_2M_SIZE    (2 << 20)
-#define HUGE_1G_SIZE    (1 << 30)
 #define BYTE_TO_KB(s)   ((s) >> 10)
 #define KB_TO_BYTE(s)   ((s) << 10)
 #define HUGE_2M_TO_KB(s) ((s) << 11)
-
-#define TO_PCT 100
-#define MAX_WM 100
-#define MIN_WM 0
 
 #define BATCHSIZE (1 << 16)
 
@@ -104,7 +99,6 @@ struct cslide_task_params {
 struct vma_pf {
     struct vma *vma;
     struct page_refs *page_refs;
-    struct vma_pf *next;
 };
 
 struct node_pages_info {
@@ -366,7 +360,7 @@ static void npf_setup_tail(struct node_page_refs *npf)
     }
 }
 
-static long long move_npf_to_list(struct node_page_refs *npf, struct page_refs **list, long long size)
+static void move_npf_to_list(struct node_page_refs *npf, struct page_refs **list, long long size)
 {
     struct page_refs *t = NULL;
     struct page_refs *iter = NULL;
@@ -394,7 +388,7 @@ static long long move_npf_to_list(struct node_page_refs *npf, struct page_refs *
     }
 
     npf->size -= moved_size;
-    return moved_size;
+    return;
 }
 
 static int init_count_page_refs(struct count_page_refs *cpf, int node_num)
@@ -1702,9 +1696,23 @@ static void cslide_stop_task(struct engine *eng, struct task *tk)
 
 static char *get_time_stamp(time_t *t)
 {
-    char *ts = asctime(localtime(t));
-    size_t len = strlen(ts);
+    struct tm *lt = NULL;
+    char *ts = NULL;
+    size_t len;
 
+    lt = localtime(t);
+    if (lt == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "get local time fail\n");
+        return NULL;
+    }
+
+    ts = asctime(localtime(t));
+    if (ts == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "get asctime fail\n");
+        return NULL;
+    }
+
+    len = strlen(ts);
     if (ts[len - 1] == '\n') {
         ts[len - 1] = '\0';
     }
