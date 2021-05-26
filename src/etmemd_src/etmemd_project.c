@@ -732,6 +732,12 @@ enum opt_result etmemd_project_mgt_engine(const char *project_name, const char *
             return OPT_TASK_NOEXIST;
         }
     }
+
+    if (eng->ops->eng_mgt_func == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "engine %s does not support eng_mgt_func\n", eng->name);
+        return OPT_INVAL;
+    }
+
     if (eng->ops->eng_mgt_func(eng, tk, cmd, sock_fd) != 0) {
         return OPT_INVAL;
     }
