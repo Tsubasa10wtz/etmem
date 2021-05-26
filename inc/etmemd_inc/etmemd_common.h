@@ -54,15 +54,6 @@ FILE *etmemd_get_proc_file(const char *pid, const char *file, int flags, const c
 
 int get_keyword_and_value(const char *str, char *key, char *val);
 
-/* function: get the line which has effective content only from the file
- *
- * in:       FILE *file     - the file to read
- *
- * out:      char *         - the string with effective content
- *           NULL           - end of file.
- * */
-char *skip_blank_line(FILE *file);
-
 int dprintf_all(int fd, const char *format, ...);
 
 #endif

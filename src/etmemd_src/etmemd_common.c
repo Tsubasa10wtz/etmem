@@ -34,7 +34,6 @@
 
 #define IDLE_SCAN_MAGIC         0x66
 #define IDLE_SCAN_ADD_FLAGS     _IOW(IDLE_SCAN_MAGIC, 0x0, unsigned int)
-#define IDLE_SCAN_REMOVE_FLAGS  _IOW(IDLE_SCAN_MAGIC, 0x1, unsigned int)
 
 static void usage(void)
 {
@@ -358,49 +357,6 @@ int get_keyword_and_value(const char *str, char *key, char *val)
     etmemd_log(ETMEMD_LOG_DEBUG, "parse config get value: %s\n", val);
 
     return 0;
-}
-
-static char *skip_colon_space_and_blank_line(char *str)
-{
-    size_t len;
-
-    len = strlen(str);
-    while (len-- > 0) {
-        if (is_valid_char_for_value(" :\n\t", str[len])) {
-            str[len] = '\0';
-            continue;
-        }
-
-        break;
-    }
-
-    if (strlen(str) == 0) {
-        return "";
-    }
-
-    while (is_valid_char_for_value(" \t", *str)) {
-        str++;
-    }
-
-    return str;
-}
-
-char *skip_blank_line(FILE *file)
-{
-    static char line[FILE_LINE_MAX_LEN] = {};
-    char *get_line = NULL;
-
-    while (fgets(line, FILE_LINE_MAX_LEN, file) != NULL) {
-        get_line = skip_colon_space_and_blank_line(line);
-        if (strcmp(get_line, "") != 0) {
-            break;
-        }
-        /* in case the last line is an empty line,
-         * make the get_line equals to NULL before next loop begins */
-        get_line = NULL;
-    }
-
-    return get_line;
 }
 
 static int write_all(int fd, const char *buf)

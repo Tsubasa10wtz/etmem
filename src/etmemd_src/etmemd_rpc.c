@@ -169,9 +169,15 @@ static enum opt_result handle_obj_cmd(char *file_name, enum cmd_type type)
 {
     GKeyFile *config = NULL;
     enum opt_result ret;
+    char resolve_path[PATH_MAX] = {0};
 
     if (file_name == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "file name is not set for obj cmd\n");
+        return OPT_INVAL;
+    }
+
+    if (realpath(file_name, resolve_path) == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "config file is not a real path(%s)\n", strerror(errno));
         return OPT_INVAL;
     }
 
@@ -678,14 +684,17 @@ static int rpc_deal_parent(void)
 
         if ((len = sprintf_s(pid_s, PID_STR_MAX_LEN, "%d", pid)) <= 0) {
             etmemd_log(ETMEMD_LOG_ERR, "sprintf for pid failed\n");
+            close(handle);
             exit(1);
         }
 
         if ((write(handle, pid_s, len)) != len) {
             etmemd_log(ETMEMD_LOG_ERR, "Error writing to the file\n");
+            close(handle);
             exit(1);
         }
 
+        close(handle);
         close(g_fd[1]);
         if (read(g_fd[0], &val, sizeof(val)) <= 0) {
             etmemd_log(ETMEMD_LOG_ERR, "Error reading to the file\n");

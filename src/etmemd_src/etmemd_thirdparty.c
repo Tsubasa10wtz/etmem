@@ -83,6 +83,13 @@ static int set_engine_ops(struct engine *eng, struct thirdparty_params *params)
     void *handler = NULL;
     struct engine_ops *ops = NULL;
     char *err = NULL;
+    char resolve_path[PATH_MAX] = {0};
+
+    if (realpath(params->libname, resolve_path) == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "file of thirdparty libname %s is not a real path(%s)\n",
+                   params->libname, strerror(errno));
+        return -1;
+    }
 
     handler = dlopen(params->libname, RTLD_NOW | RTLD_LOCAL);
     err = dlerror();
