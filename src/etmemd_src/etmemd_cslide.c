@@ -1606,6 +1606,10 @@ static void *cslide_main(void *arg)
     struct cslide_eng_params *eng_params = (struct cslide_eng_params *)arg;
     struct sys_mem *mem = NULL;
 
+    // only invalid pthread id or deatch more than once will cause error
+    // so no need to check return value of pthread_detach
+    (void)pthread_detach(pthread_self());
+
     while (true) {
         factory_update_pid_params(&eng_params->factory);
         if (eng_params->finish) {
@@ -1712,7 +1716,7 @@ static char *get_time_stamp(time_t *t)
         return NULL;
     }
 
-    ts = asctime(localtime(t));
+    ts = asctime(lt);
     if (ts == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "get asctime fail\n");
         return NULL;

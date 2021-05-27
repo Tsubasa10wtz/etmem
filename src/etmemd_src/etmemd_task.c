@@ -58,7 +58,12 @@ static int get_pid_through_pipe(char *arg_pid[], const int *pipefd)
             return -1;
         }
 
-        execve(arg_pid[0], arg_pid, NULL);
+        if (execve(arg_pid[0], arg_pid, NULL) == -1) {
+            etmemd_log(ETMEMD_LOG_ERR, "execve %s fail with %s.\n", arg_pid[0], strerror(errno));
+            close(pipefd[1]);
+            return -1;
+        }
+
         if (fflush(stdout) != 0) {
             etmemd_log(ETMEMD_LOG_ERR, "fflush execve stdout fail.\n");
             close(pipefd[1]);
