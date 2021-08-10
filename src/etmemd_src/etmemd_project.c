@@ -130,7 +130,8 @@ static enum opt_result project_of_group(GKeyFile *config, const char *group_name
     return OPT_SUCCESS;
 }
 
-static enum opt_result engine_of_group(GKeyFile *config, char *group_name, struct project *proj, struct engine **eng)
+static enum opt_result engine_of_group(GKeyFile *config, const char *group_name,
+        struct project *proj, struct engine **eng)
 {
     char *eng_name = NULL;
     enum opt_result ret;
@@ -154,7 +155,7 @@ static enum opt_result engine_of_group(GKeyFile *config, char *group_name, struc
     return OPT_SUCCESS;
 }
 
-static enum opt_result task_of_group(GKeyFile *config, char *group_name,
+static enum opt_result task_of_group(GKeyFile *config, const char *group_name,
         struct project *proj, struct engine *eng, struct task **tk)
 {
     char *task_name = NULL;
