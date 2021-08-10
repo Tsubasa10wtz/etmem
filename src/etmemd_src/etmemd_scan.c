@@ -70,7 +70,7 @@ static unsigned int get_page_shift(long pagesize)
 int init_g_page_size(void)
 {
     unsigned int page_shift;
-    long pagesize = -1;
+    long pagesize;
 
     pagesize = sysconf(_SC_PAGESIZE);
     if (pagesize == -1) {
