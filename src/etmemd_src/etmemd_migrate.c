@@ -20,6 +20,7 @@
 #include "etmemd.h"
 #include "etmemd_migrate.h"
 #include "etmemd_common.h"
+#include "etmemd_slide.h"
 #include "etmemd_log.h"
 
 static char *get_swap_string(struct page_refs **page_refs, int batchsize)
@@ -113,3 +114,48 @@ int etmemd_grade_migrate(const char *pid, const struct memory_grade *memory_grad
     return ret;
 }
 
+unsigned long check_should_migrate(const struct task_pid *tk_pid)
+{
+    int ret = -1;
+    unsigned long vm_rss;
+    unsigned long vm_swap;
+    unsigned long vm_cmp;
+    unsigned long need_to_swap_page_num;
+    char pid_str[PID_STR_MAX_LEN] = {0};
+    unsigned long pagesize;
+    struct slide_params *slide_params = NULL;
+
+    if (snprintf_s(pid_str, PID_STR_MAX_LEN, PID_STR_MAX_LEN - 1, "%u", tk_pid->pid) <= 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "snprintf pid fail %u", tk_pid->pid);
+        return 0;
+    }
+
+    ret = get_mem_from_proc_file(pid_str, STATUS_FILE, &vm_rss, VMRSS);
+    if (ret != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "get vmrss %s fail", pid_str);
+        return 0;
+    }
+
+    ret = get_mem_from_proc_file(pid_str, STATUS_FILE, &vm_swap, VMSWAP);
+    if (ret != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "get swapout %s fail", pid_str);
+        return 0;
+    }
+
+    slide_params = (struct slide_params *)tk_pid->tk->params;
+    if (slide_params == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "slide params is null");
+        return 0;
+    }
+
+    vm_cmp = (vm_rss + vm_swap) / 100 * slide_params->dram_percent;
+    if (vm_cmp > vm_rss) {
+        etmemd_log(ETMEMD_LOG_DEBUG, "migrate too much, stop migrate this time\n");
+        return 0;
+    }
+
+    pagesize = get_pagesize();
+    need_to_swap_page_num = KB_TO_BYTE(vm_rss - vm_cmp) / pagesize;
+
+    return need_to_swap_page_num;
+}

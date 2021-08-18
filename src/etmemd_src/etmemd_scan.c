@@ -24,6 +24,7 @@
 #include "etmemd_project.h"
 #include "etmemd_engine.h"
 #include "etmemd_common.h"
+#include "etmemd_slide.h"
 #include "etmemd_log.h"
 #include "securec.h"
 
@@ -819,6 +820,46 @@ void clean_memory_grade_unexpected(void *arg)
     return;
 }
 
+void clean_page_sort_unexpected(void *arg)
+{
+    struct page_sort **msg = (struct page_sort **)arg;
+
+    if (*msg == NULL) {
+        return;
+    }
+
+    for (int i = 0; i < (*msg)->loop + 1; i++) {
+        clean_page_refs_unexpected(&((*msg)->page_refs_sort)[i]);
+    }
+
+    free(*msg);
+    *msg = NULL;
+
+    return;
+}
+
+struct page_sort *alloc_page_sort(const struct task_pid *tpid)
+{
+    struct page_sort *page_sort = NULL;
+
+    page_sort = (struct page_sort *)calloc(1, sizeof(struct page_sort));
+    if (page_sort == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "calloc page sort failed.\n");
+        return NULL;
+    }
+
+    page_sort->loop = tpid->tk->eng->proj->loop;
+
+    page_sort->page_refs_sort = (struct page_refs **)calloc((tpid->tk->eng->proj->loop + 1), sizeof(struct page_refs *));
+    if (page_sort->page_refs_sort == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "calloc page refs sort failed.\n");
+        free(page_sort);
+        return NULL;
+    }
+
+    return page_sort; 
+}
+
 struct page_refs *add_page_refs_into_memory_grade(struct page_refs *page_refs, struct page_refs **list)
 {
     struct page_refs *tmp = NULL;
@@ -850,4 +891,33 @@ int etmemd_scan_init(void)
 void etmemd_scan_exit(void)
 {
     g_exp_scan_inited = false;
+}
+
+/* Move the colder pages by sorting page refs.
+ * Use original page_refs if dram_percent is not set.
+ * But, use the sorting result of page_refs, if dram_percent is set to (0, 100] */
+struct page_sort *sort_page_refs(struct page_refs **page_refs, const struct task_pid *tpid)
+{
+    struct slide_params *slide_params = NULL;
+    struct page_sort *page_sort = NULL;
+    struct page_refs *page_next = NULL;
+
+    page_sort = alloc_page_sort(tpid);
+    if (page_sort == NULL)
+        return NULL;
+
+    slide_params = (struct slide_params *)tpid->tk->params;
+    if (slide_params == NULL || slide_params->dram_percent == 0) {
+        page_sort->page_refs = page_refs;
+        return page_sort;
+    }
+
+    while (*page_refs != NULL) {
+        page_next = (*page_refs)->next;
+        (*page_refs)->next = (page_sort->page_refs_sort[(*page_refs)->count]);
+        (page_sort->page_refs_sort[(*page_refs)->count]) = *page_refs;
+        *page_refs = page_next;
+    }
+
+    return page_sort;
 }
