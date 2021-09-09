@@ -39,4 +39,9 @@ struct page_refs {
     struct page_refs *next;     /* point to next page */
 };
 
+struct page_sort {
+    struct page_refs **page_refs_sort;
+    struct page_refs **page_refs;
+    int loop;
+};
 #endif

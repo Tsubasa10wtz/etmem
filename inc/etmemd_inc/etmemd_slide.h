@@ -22,6 +22,7 @@
 struct slide_params {
     struct task_executor *executor;
     int t;          /* watermark */
+    uint8_t dram_percent;
 };
 
 int fill_engine_type_slide(struct engine *eng, GKeyFile *config);

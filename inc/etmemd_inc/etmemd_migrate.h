@@ -17,6 +17,7 @@
 #define ETMEMD_MIGRATE_H
 
 #include "etmemd.h"
+#include "etmemd_task.h"
 
 #define COLD_PAGE   "/swap_pages"
 
@@ -26,5 +27,5 @@
 #define SWAP_ADDR_LEN   20
 
 int etmemd_grade_migrate(const char* pid, const struct memory_grade *memory_grade);
-
+unsigned long check_should_migrate(const struct task_pid *tk_pid);
 #endif

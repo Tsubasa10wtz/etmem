@@ -77,8 +77,11 @@ struct vmas *get_vmas_with_flags(const char *pid, char **vmflags_array, int vmfl
 struct vmas *get_vmas(const char *pid);
 
 void clean_page_refs_unexpected(void *arg);
-
 void clean_memory_grade_unexpected(void *arg);
+
+void clean_page_sort_unexpected(void *arg);
+struct page_sort *alloc_page_sort(const struct task_pid *tk_pid);
+struct page_sort *sort_page_refs(struct page_refs **page_refs, const struct task_pid *tk_pid);
 
 struct page_refs *add_page_refs_into_memory_grade(struct page_refs *page_refs, struct page_refs **list);
 int init_g_page_size(void);

@@ -195,6 +195,19 @@ int get_unsigned_int_value(const char *val, unsigned int *value)
     return 0;
 }
 
+int get_unsigned_long_value(const char *val, unsigned long *value)
+{
+    char *pos = NULL;
+
+    errno = 0;
+    *value = strtoul(val, &pos, DECIMAL_RADIX);
+    if (check_str_format(pos[0])) {
+        etmemd_log(ETMEMD_LOG_ERR, "invalid value, must be type of unsigned long.\n");
+        return -1;
+    }
+
+    return 0;
+}
 void etmemd_safe_free(void **ptr)
 {
     if (ptr == NULL || *ptr == NULL) {
@@ -203,6 +216,36 @@ void etmemd_safe_free(void **ptr)
 
     free(*ptr);
     *ptr = NULL;
+}
+
+static int get_status_num(char *getline, char *value, size_t value_len)
+{
+    size_t len = strlen(getline);
+    int start_cp_index = 0;
+    int end_cp_index = 0;
+    size_t i;
+
+    for (i = 0; i < len; i++) {
+        if (isdigit(getline[i])) {
+            start_cp_index = i;
+            end_cp_index = start_cp_index;
+            break;
+        }
+    }
+
+    for (; i < len; i++) {
+        if (!isdigit(getline[i])) {
+            end_cp_index = i - 1;
+            break;
+        }
+    }
+
+    if (strncpy_s(value, value_len, getline + start_cp_index, end_cp_index - start_cp_index + 1) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "strncpy_s for result failed.\n");
+        return -1;
+    }
+
+    return 0;
 }
 
 static char *etmemd_get_proc_file_str(const char *pid, const char *file)
@@ -397,4 +440,55 @@ int dprintf_all(int fd, const char *format, ...)
 
     va_end(args_in);
     return 0;
+}
+
+int get_mem_from_proc_file(const char *pid, const char *file_name, unsigned long *data, const char *cmpstr)
+{
+    FILE *file = NULL;
+    char value[KEY_VALUE_MAX_LEN] = {};
+    char get_line[FILE_LINE_MAX_LEN] = {};
+    unsigned long val;
+    int ret = -1;
+
+    file = etmemd_get_proc_file(pid, file_name, 0, "r");
+    if (file == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "cannot open %s for pid %s\n", file_name, pid);
+        return ret;
+    }
+
+    while (fgets(get_line, FILE_LINE_MAX_LEN - 1, file) != NULL) {
+        if (strstr(get_line, cmpstr) == NULL) {
+            continue;
+        }
+
+        if (get_status_num(get_line, value, KEY_VALUE_MAX_LEN) != 0) {
+            etmemd_log(ETMEMD_LOG_ERR, "get mem from /proc/%s/%s fail\n", pid, file_name);
+            break;
+        }
+
+        if (get_unsigned_long_value(value, &val) != 0) {
+            etmemd_log(ETMEMD_LOG_ERR, "get value with strtoul fail.\n");
+            break;
+        }
+
+        *data = val;
+        ret = 0;
+        break;
+    }
+
+    fclose(file);
+    return ret;
+}
+
+unsigned long get_pagesize(void)
+{
+    long pagesize;
+
+    pagesize = sysconf(_SC_PAGESIZE);
+    if (pagesize == -1) {
+        etmemd_log(ETMEMD_LOG_ERR, "get pageszie fail,error: %d\n", errno);
+        return -1;
+    }
+
+    return (unsigned long)pagesize;
 }

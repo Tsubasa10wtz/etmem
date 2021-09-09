@@ -20,10 +20,16 @@
 #include <stdbool.h>
 
 #define PROC_PATH "/proc/"
+#define STATUS_FILE "/status"
+#define SWAPIN "SwapIN"
+#define VMRSS "VmRSS"
+#define VMSWAP "VmSwap"
 #define FILE_LINE_MAX_LEN 1024
 #define KEY_VALUE_MAX_LEN 64
 #define DECIMAL_RADIX 10
 #define ETMEMD_MAX_PARAMETER_NUM 6
+#define BYTE_TO_KB(s) ((s) >> 10)
+#define KB_TO_BYTE(s) ((s) << 10)
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 
@@ -48,11 +54,14 @@ int etmemd_parse_cmdline(int argc, char *argv[], bool *is_help);
 bool check_str_format(char endptr);
 int get_int_value(const char *val, int *value);
 int get_unsigned_int_value(const char *val, unsigned int *value);
+int get_unsigned_long_value(const char *val, unsigned long *value);
 void etmemd_safe_free(void **ptr);
 
 FILE *etmemd_get_proc_file(const char *pid, const char *file, int flags, const char *mode);
 
 int get_keyword_and_value(const char *str, char *key, char *val);
+unsigned long get_pagesize(void);
+int get_mem_from_proc_file(const char *pid, const char *file_name, unsigned long *data, const char *cmpstr);
 
 int dprintf_all(int fd, const char *format, ...);
 
