@@ -227,6 +227,7 @@ free_params:
 
 static void slide_clear_task(struct task *tk)
 {
+    etmemd_free_task_pids(tk);
     free(tk->params);
     tk->params = NULL;
 }

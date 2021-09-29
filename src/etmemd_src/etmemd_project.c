@@ -611,11 +611,12 @@ enum opt_result etmemd_project_show(const char *project_name, int sock_fd)
 
     if (!exists) {
         if (project_name == NULL) {
-            etmemd_log(ETMEMD_LOG_ERR, "no project exists\n");
+            etmemd_log(ETMEMD_LOG_DEBUG, "no project exists\n");
+            dprintf_all(sock_fd, "no project exists\n\n"); 
         } else {
-            etmemd_log(ETMEMD_LOG_ERR, "project: project %s is not existed\n\n", project_name);
+            etmemd_log(ETMEMD_LOG_DEBUG, "project: project %s is not existed\n\n", project_name);
+            dprintf_all(sock_fd, "project: project %s is not existed\n\n", project_name);
         }
-        return OPT_PRO_NOEXIST;
     }
 
     return OPT_SUCCESS;
