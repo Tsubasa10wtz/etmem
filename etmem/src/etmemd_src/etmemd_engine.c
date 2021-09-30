@@ -18,6 +18,7 @@
 #include "etmemd_engine.h"
 #include "etmemd_slide.h"
 #include "etmemd_cslide.h"
+#include "etmemd_memdcd.h"
 #include "etmemd_thirdparty.h"
 #include "etmemd_log.h"
 #include "etmemd_common.h"
@@ -36,6 +37,7 @@ struct engine_remove_item {
 static struct engine_add_item g_engine_add_items[] = {
     {"slide", fill_engine_type_slide},
     {"cslide", fill_engine_type_cslide},
+    {"memdcd", fill_engine_type_memdcd},
     {"thirdparty", fill_engine_type_thirdparty},
 };
 
