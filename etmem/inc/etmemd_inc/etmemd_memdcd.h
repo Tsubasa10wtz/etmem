@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright (c) Huawei Technologies Co., Ltd. 2019-2021. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  * etmem is licensed under the Mulan PSL v2.
  * You can use this software according to the terms and conditions of the Mulan PSL v2.
  * You may obtain a copy of Mulan PSL v2 at:
@@ -8,30 +8,24 @@
  * IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR
  * PURPOSE.
  * See the Mulan PSL v2 for more details.
- * Author: louhongxiang
- * Create: 2019-12-10
- * Description: This is a header file of the data structure definition for etmem engine.
+ * Author: YangXin
+ * Create: 2021-4-20
+ * Description: This is a header file of the function declaration for memdcd engine..
  ******************************************************************************/
 
-#ifndef ETMEMD_ENGINE_H
-#define ETMEMD_ENGINE_H
 
-#include <glib.h>
-#include "etmemd.h"
-#include "etmemd_task.h"
-#include "etmemd_engine_exp.h"
+#ifndef ETMEMD_MEMDCD_H
+#define ETMEMD_MEMDCD_H
 
-enum eng_type {
-    SLIDE_ENGINE = 0,
-    CSLIDE_ENGINE,
-    MEMDCD_ENGINE,
-    DYNAMIC_FB_ENGINE,
-    HISTORICAL_FB_ENGINE,
-    THIRDPARTY_ENGINE,
-    ENGINE_TYPE_CNT,
+#include "etmemd_engine.h"
+
+#define MAX_SOCK_PATH_LENGTH 108
+
+struct memdcd_params {
+	    struct task_executor *executor;
+	        char memdcd_socket[MAX_SOCK_PATH_LENGTH];
 };
 
-struct engine *etmemd_engine_add(GKeyFile *config);
-void etmemd_engine_remove(struct engine *eng);
+int fill_engine_type_memdcd(struct engine *eng, GKeyFile *config);
 
 #endif
