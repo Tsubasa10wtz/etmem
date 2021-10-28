@@ -19,15 +19,35 @@
 #include <sys/queue.h>
 #include <stdbool.h>
 
-struct project {
-    char *name;
+enum scan_type {
+    PAGE_SCAN = 0,
+    REGION_SCAN,
+};
+
+struct page_scan {
     int interval;
     int loop;
     int sleep;
+};
+
+struct region_scan {
+    unsigned long sample_interval;
+    unsigned long aggr_interval;
+    unsigned long update_interval;
+    unsigned long min_nr_regions;
+    unsigned long max_nr_regions;
+};
+
+struct project {
+    char *name;
+    enum scan_type type;
+    void *scan_param;
     bool start;
     struct engine *engs;
 
     SLIST_ENTRY(project) entry;
 };
+
+int scan_fill_by_conf(GKeyFile *config, struct project *proj);
 
 #endif

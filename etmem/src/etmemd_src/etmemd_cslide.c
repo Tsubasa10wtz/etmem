@@ -1818,7 +1818,7 @@ static int cslide_engine_do_cmd(struct engine *eng, struct task *tk, char *cmd, 
 
     item = find_cmd_item(g_task_cmd_items, ARRAY_SIZE(g_task_cmd_items), cmd);
     if (item == NULL) {
-        etmemd_log(ETMEMD_LOG_ERR, "cslide cmd %s is not supportted\n", cmd);
+        etmemd_log(ETMEMD_LOG_ERR, "cslide cmd %s is not supported\n", cmd);
         return -1;
     }
     if (tk == NULL) {
@@ -2060,6 +2060,7 @@ static struct config_item cslide_eng_config_items[] = {
 static int cslide_fill_eng(GKeyFile *config, struct engine *eng)
 {
     struct cslide_eng_params *params = calloc(1, sizeof(struct cslide_eng_params));
+    struct page_scan *page_scan = (struct page_scan *)eng->proj->scan_param;
     
     if (params == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "alloc cslide engine params fail\n");
@@ -2071,9 +2072,9 @@ static int cslide_fill_eng(GKeyFile *config, struct engine *eng)
         goto free_eng_params;
     }
 
-    params->loop = eng->proj->loop;
-    params->interval = eng->proj->interval;
-    params->sleep = eng->proj->sleep;
+    params->loop = page_scan->loop;
+    params->interval = page_scan->interval;
+    params->sleep = page_scan->sleep;
     if (parse_file_config(config, ENG_GROUP, cslide_eng_config_items,
         ARRAY_SIZE(cslide_eng_config_items), (void *)params) != 0) {
         etmemd_log(ETMEMD_LOG_ERR, "cslide fill engine params fail\n");

@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include "etmemd_pool_adapter.h"
 #include "etmemd_engine.h"
+#include "etmemd_scan.h"
 
 static void push_ctrl_workflow(struct task_pid **tk_pid, void *(*exector)(void *))
 {
@@ -77,6 +78,7 @@ static void *launch_threadtimer_executor(void *arg)
 int start_threadpool_work(struct task_executor *executor)
 {
     struct task *tk = executor->tk;
+    struct page_scan *page_scan = (struct page_scan *)tk->eng->proj->scan_param;
 
     etmemd_log(ETMEMD_LOG_DEBUG, "start etmem  for Task_value %s, project_name %s\n",
                tk->value, tk->eng->proj->name);
@@ -89,7 +91,7 @@ int start_threadpool_work(struct task_executor *executor)
         return -1;
     }
 
-    tk->timer_inst = thread_timer_create(tk->eng->proj->interval);
+    tk->timer_inst = thread_timer_create(page_scan->interval);
     if (tk->timer_inst == NULL) {
         threadpool_stop_and_destroy(&tk->threadpool_inst);
         etmemd_log(ETMEMD_LOG_ERR, "Timer task creation failed for project <%s> task <%s>.\n",

@@ -25,6 +25,7 @@
 #include "securec.h"
 #include "etmemd_project.h"
 #include "etmemd_engine.h"
+#include "etmemd_damon.h"
 #include "etmemd_common.h"
 #include "etmemd_file.h"
 #include "etmemd_log.h"
@@ -34,6 +35,7 @@
 #define MAX_LOOP_VALUE      120
 
 #define MAX_OBJ_NAME_LEN    64
+#define MIN_NR_MIN_VAL      3
 
 static SLIST_HEAD(project_list, project) g_projects = SLIST_HEAD_INITIALIZER(g_projects);
 
@@ -452,9 +454,9 @@ static int fill_project_name(void *obj, void *val)
     return 0;
 }
 
-static int fill_project_loop(void *obj, void *val)
+static int fill_page_scan_loop(void *obj, void *val)
 {
-    struct project *proj = (struct project *)obj;
+    struct page_scan *scan = (struct page_scan *)obj;
     int loop = parse_to_int(val);
     if (loop < 1 || loop > MAX_LOOP_VALUE) {
         etmemd_log(ETMEMD_LOG_ERR, "invalid project loop value %d, it must be between 1 and %d.\n",
@@ -462,13 +464,13 @@ static int fill_project_loop(void *obj, void *val)
         return -1;
     }
 
-    proj->loop = loop;
+    scan->loop = loop;
     return 0;
 }
 
-static int fill_project_interval(void *obj, void *val)
+static int fill_page_scan_interval(void *obj, void *val)
 {
-    struct project *proj = (struct project *)obj;
+    struct page_scan *scan = (struct page_scan *)obj;
     int interval = parse_to_int(val);
     if (interval < 1 || interval > MAX_INTERVAL_VALUE) {
         etmemd_log(ETMEMD_LOG_ERR, "invalid project interval value %d, it must be between 1 and %d.\n",
@@ -476,13 +478,13 @@ static int fill_project_interval(void *obj, void *val)
         return -1;
     }
 
-    proj->interval = interval;
+    scan->interval = interval;
     return 0;
 }
 
-static int fill_project_sleep(void *obj, void *val)
+static int fill_page_scan_sleep(void *obj, void *val)
 {
-    struct project *proj = (struct project *)obj;
+    struct page_scan *scan = (struct page_scan *)obj;
     int sleep = parse_to_int(val);
     if (sleep < 1 || sleep > MAX_SLEEP_VALUE) {
         etmemd_log(ETMEMD_LOG_ERR, "invalid project sleep value %d, it must be between 1 and %d.\n",
@@ -490,15 +492,147 @@ static int fill_project_sleep(void *obj, void *val)
         return -1;
     }
 
-    proj->sleep = sleep;
+    scan->sleep = sleep;
+    return 0;
+}
+
+struct config_item g_page_scan_config_items[] = {
+    {"loop", INT_VAL, fill_page_scan_loop, false},
+    {"interval", INT_VAL, fill_page_scan_interval, false},
+    {"sleep", INT_VAL, fill_page_scan_sleep, false},
+};
+
+static int fill_region_scan_samp_interval(void *obj, void *val)
+{
+    struct region_scan *scan = (struct region_scan *)obj;
+    unsigned long samp_intvl = parse_to_ulong(val);
+
+    scan->sample_interval = samp_intvl;
+    return 0;
+}
+
+static int fill_region_scan_aggr_interval(void *obj, void *val)
+{
+    struct region_scan *scan = (struct region_scan *)obj;
+    unsigned long aggr_intvl = parse_to_ulong(val);
+
+    scan->aggr_interval = aggr_intvl;
+    return 0;
+}
+
+static int fill_region_scan_updt_interval(void *obj, void *val)
+{
+    struct region_scan *scan = (struct region_scan *)obj;
+    unsigned long updt_intvl = parse_to_ulong(val);
+
+    scan->update_interval = updt_intvl;
+    return 0;
+}
+
+static int fill_region_scan_min_nr(void *obj, void *val)
+{
+    struct region_scan *scan = (struct region_scan *)obj;
+    unsigned long min_nr = parse_to_ulong(val);
+
+    if (min_nr < MIN_NR_MIN_VAL) {
+        etmemd_log(ETMEMD_LOG_ERR, "invalid minimum nr value %d, it should not be smaller than %d.\n",
+                   min_nr, MIN_NR_MIN_VAL);
+        return -1;
+    }
+
+    scan->min_nr_regions = min_nr;
+    return 0;
+}
+
+static int fill_region_scan_max_nr(void *obj, void *val)
+{
+    struct region_scan *scan = (struct region_scan *)obj;
+    unsigned long max_nr = parse_to_ulong(val);
+
+    if (max_nr < MIN_NR_MIN_VAL) {
+        etmemd_log(ETMEMD_LOG_ERR, "invalid maximum nr value %d, it should not be smaller than %d.\n",
+                   max_nr, MIN_NR_MIN_VAL);
+        return -1;
+    }
+
+    scan->max_nr_regions = max_nr;
+    return 0;
+}
+
+struct config_item g_region_scan_config_items[] = {
+    {"sample_interval", INT_VAL, fill_region_scan_samp_interval, false},
+    {"aggr_interval", INT_VAL, fill_region_scan_aggr_interval, false},
+    {"update_interval", INT_VAL, fill_region_scan_updt_interval, false},
+    {"min_nr_regions", INT_VAL, fill_region_scan_min_nr, false},
+    {"max_nr_regions", INT_VAL, fill_region_scan_max_nr, false},
+};
+
+int scan_fill_by_conf(GKeyFile *config, struct project *proj)
+{
+    struct region_scan *rg_scan = NULL;
+
+    if (proj->type == PAGE_SCAN) {
+        if (parse_file_config(config, PROJ_GROUP, g_page_scan_config_items,
+                              ARRAY_SIZE(g_page_scan_config_items), proj->scan_param) != 0) {
+            etmemd_log(ETMEMD_LOG_ERR, "parse page scan config fail.\n");
+            return -1;
+        }
+    } else if (proj->type == REGION_SCAN) {
+        if (parse_file_config(config, PROJ_GROUP, g_region_scan_config_items,
+                              ARRAY_SIZE(g_region_scan_config_items), proj->scan_param) != 0) {
+            etmemd_log(ETMEMD_LOG_ERR, "parse region scan config fail.\n");
+            return -1;
+        }
+        rg_scan = (struct region_scan *)proj->scan_param;
+        if (rg_scan->min_nr_regions >= rg_scan->max_nr_regions) {
+            etmemd_log(ETMEMD_LOG_ERR, "min_nr_regions %d should be smaller than max_nr_regions %d.\n",
+                       rg_scan->min_nr_regions, rg_scan->max_nr_regions);
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+static int fill_project_scan_type(void *obj, void *val)
+{
+    struct project *proj = (struct project *)obj;
+    char *scan_type = (char *)val;
+
+    if (strcmp(scan_type, "page") != 0 && strcmp(scan_type, "region") != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "invalid scan type %s, must be page or region\n",
+                   scan_type);
+        return -1;
+    }
+
+    if (strcmp(scan_type, "page") == 0) {
+        struct page_scan *scan = NULL;
+
+        scan = (struct page_scan *)calloc(1, sizeof(struct page_scan));
+        if (scan == NULL) {
+            etmemd_log(ETMEMD_LOG_ERR, "malloc fail\n");
+            return -1;
+        }
+        proj->scan_param = (void *)scan;
+        proj->type = PAGE_SCAN;
+    } else {
+        struct region_scan *scan = NULL;
+
+        scan = (struct region_scan *)calloc(1, sizeof(struct region_scan));
+        if (scan == NULL) {
+            etmemd_log(ETMEMD_LOG_ERR, "malloc fail\n");
+            return -1;
+        }
+        proj->scan_param = (void *)scan;
+        proj->type = REGION_SCAN;
+    }
+
     return 0;
 }
 
 static struct config_item g_project_config_items[] = {
     {"name", STR_VAL, fill_project_name, false},
-    {"loop", INT_VAL, fill_project_loop, false},
-    {"interval", INT_VAL, fill_project_interval, false},
-    {"sleep", INT_VAL, fill_project_sleep, false},
+    {"scan_type", STR_VAL, fill_project_scan_type, false},
 };
 
 static void clear_project(struct project *proj)
@@ -506,6 +640,11 @@ static void clear_project(struct project *proj)
     if (proj->name != NULL) {
         free(proj->name);
         proj->name = NULL;
+    }
+
+    if (proj->scan_param != NULL) {
+        free(proj->scan_param);
+        proj->scan_param = NULL;
     }
 }
 
@@ -551,6 +690,13 @@ enum opt_result etmemd_project_add(GKeyFile *config)
     }
     if (project_fill_by_conf(config, proj) != 0) {
         etmemd_log(ETMEMD_LOG_ERR, "fill project from configuration file fail\n");
+        free(proj);
+        proj = NULL;
+        return OPT_INVAL;
+    }
+    if (scan_fill_by_conf(config, proj) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "fill scan parameter from configuration file fail\n");
+        clear_project(proj);
         free(proj);
         proj = NULL;
         return OPT_INVAL;
@@ -665,9 +811,22 @@ enum opt_result etmemd_migrate_start(const char *project_name)
         return OPT_PRO_STARTED;
     }
 
-    if (start_tasks(proj) != 0) {
-        etmemd_log(ETMEMD_LOG_ERR, "some task of project %s start fail\n", project_name);
-        return OPT_INTER_ERR;
+    switch (proj->type) {
+        case PAGE_SCAN:
+            if (start_tasks(proj) != 0) {
+                etmemd_log(ETMEMD_LOG_ERR, "some task of project %s start fail\n", project_name);
+                return OPT_INTER_ERR;
+            }
+            break;
+        case REGION_SCAN:
+            if (etmemd_start_damon(proj) != 0) {
+                etmemd_log(ETMEMD_LOG_ERR, "start damon of project %s fail\n", project_name);
+                return OPT_INTER_ERR;
+            }
+            break;
+        default:
+            etmemd_log(ETMEMD_LOG_ERR, "scan type %d not support\n", proj->type);
+            return OPT_INVAL;
     }
 
     proj->start = true;
@@ -694,9 +853,23 @@ enum opt_result etmemd_migrate_stop(const char *project_name)
                    proj->name);
         return OPT_PRO_STOPPED;
     }
-    stop_tasks(proj);
-    proj->start = false;
 
+    switch (proj->type) {
+        case PAGE_SCAN:
+            stop_tasks(proj);
+            break;
+        case REGION_SCAN:
+            if (etmemd_stop_damon() != 0) {
+                etmemd_log(ETMEMD_LOG_ERR, "stop damon of project %s fail\n", project_name);
+                return OPT_INTER_ERR;
+            }
+            break;
+        default:
+            etmemd_log(ETMEMD_LOG_ERR, "scan type %d not support\n", proj->type);
+            return OPT_INVAL;
+    }
+
+    proj->start = false;
     return OPT_SUCCESS;
 }
 

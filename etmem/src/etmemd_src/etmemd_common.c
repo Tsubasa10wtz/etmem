@@ -198,16 +198,19 @@ int get_unsigned_int_value(const char *val, unsigned int *value)
 int get_unsigned_long_value(const char *val, unsigned long *value)
 {
     char *pos = NULL;
+    unsigned long value_tmp;
 
     errno = 0;
-    *value = strtoul(val, &pos, DECIMAL_RADIX);
+    value_tmp = strtoul(val, &pos, DECIMAL_RADIX);
     if (check_str_format(pos[0])) {
         etmemd_log(ETMEMD_LOG_ERR, "invalid value, must be type of unsigned long.\n");
         return -1;
     }
 
+    *value = value_tmp;
     return 0;
 }
+
 void etmemd_safe_free(void **ptr)
 {
     if (ptr == NULL || *ptr == NULL) {
