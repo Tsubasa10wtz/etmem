@@ -368,7 +368,8 @@ int main(int argc, const char **argv)
             CU_console_run_tests();
             break;
         default:
-            printf("not support cunit mode, only support: 0 or 1\n");
+            printf("not support cunit mode, only support: "
+                   "0 for CUNIT_SCREEN, 1 for CUNIT_XMLFILE, 2 for CUNIT_CONSOLE\n");
             goto ERROR;
     }
 

@@ -22,7 +22,6 @@ INCLUDE_DIRECTORIES(${GLIB2_INCLUDE_DIRS})
 
 SET(EXE etmem_project_ops_llt)
 
-add_executable(${EXE}
-etmem_project_ops_llt.c)
+add_executable(${EXE} etmem_project_ops_llt.c)
 
 target_link_libraries(${EXE} cunit ${BUILD_DIR}/lib/libetmemd.so ${BUILD_DIR}/lib/libtest.so pthread dl rt boundscheck numa ${GLIB2_LIBRARIES})
