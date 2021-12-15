@@ -235,6 +235,54 @@ FREE_SWAP:
     return ret;
 }
 
+static struct page_refs *memdcd_do_scan(const struct task_pid *tpid, const struct task *tk)
+{
+    int i = 0;
+    struct vmas *vmas = NULL;
+    struct page_refs *page_refs = NULL;
+    int ret = 0;
+    char pid[PID_STR_MAX_LEN] = {0};
+    char *us = "us";
+
+    if(tpid == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "task pid is null\n");
+        return NULL;
+    }
+
+    if (tk == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "task struct is null for pid %u\n", tpid->pid);
+        return NULL;
+    }
+
+    if (snprintf_s(pid, PID_STR_MAX_LEN, PID_STR_MAX_LEN - 1, "%u", tpid->pid) <= 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "snprintf pid fail %u", tpid->pid);
+        return NULL;
+    }
+    /* get vmas of target pid first. */
+    vmas = get_vmas_with_flags(pid, &us, 1, true);
+    if (vmas == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "get vmas for %s fail\n", pid);
+        return NULL;
+    }
+
+    /* loop for scanning idle_pages to get result of memory access. */
+    for (i = 0; i < tk->eng->proj->loop; i++) {
+        ret = get_page_refs(vmas, pid, &page_refs, NULL, 0);
+        if (ret != 0) {
+            etmemd_log(ETMEMD_LOG_ERR, "scan operation failed\n");
+            /* free page_refs nodes already exist */
+            etmemd_free_page_refs(page_refs);
+            page_refs = NULL;
+            break;
+        }
+        sleep((unsigned)tk->eng->proj->sleep);
+    }
+
+    free_vmas(vmas);
+
+    return page_refs;
+}
+
 static void *memdcd_executor(void *arg)
 {
     struct task_pid *tk_pid = (struct task_pid *)arg;
@@ -244,7 +292,7 @@ static void *memdcd_executor(void *arg)
     /* register cleanup function in case of unexpected cancellation detected,
      * and register for memory_grade first, because it needs to clean after page_refs is cleaned */
     pthread_cleanup_push(clean_page_refs_unexpected, &page_refs);
-    page_refs = etmemd_do_scan(tk_pid, tk_pid->tk);
+    page_refs = memdcd_do_scan(tk_pid, tk_pid->tk);
     if (page_refs != NULL) {
         if (memdcd_do_migrate(tk_pid->pid, page_refs, memdcd_params->memdcd_socket) != 0) {
             etmemd_log(ETMEMD_LOG_WARN, "memdcd migrate for pid %u fail\n", tk_pid->pid);
@@ -290,12 +338,12 @@ static struct config_item g_memdcd_task_config_items[] = {
 static int memdcd_fill_task(GKeyFile *config, struct task *tk)
 {
     struct memdcd_params *params = calloc(1, sizeof(struct memdcd_params));
-    memset_s(params->memdcd_socket, MAX_SOCK_PATH_LENGTH, 0, MAX_SOCK_PATH_LENGTH);
-
     if (params == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "alloc memdcd param fail\n");
         return -1;
     }
+
+    memset_s(params->memdcd_socket, MAX_SOCK_PATH_LENGTH, 0, MAX_SOCK_PATH_LENGTH);
 
     if (parse_file_config(config, TASK_GROUP, g_memdcd_task_config_items, ARRAY_SIZE(g_memdcd_task_config_items),
                           (void *)params) != 0) {
