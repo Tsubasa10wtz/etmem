@@ -123,3 +123,12 @@ if( ${ARCHITECTURE} STREQUAL "aarch64" )
 else()
  target_compile_options(etmemd_scan PRIVATE -march=core-avx-i -m64)
 endif()
+
+install(TARGETS etmem etmemd 
+        PERMISSIONS OWNER_READ OWNER_EXECUTE 
+        RUNTIME DESTINATION /usr/bin)
+
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/conf/ 
+        DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
+        FILE_PERMISSIONS OWNER_READ OWNER_WRITE 
+        DESTINATION /etc/etmem)
