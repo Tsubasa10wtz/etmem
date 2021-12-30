@@ -57,7 +57,7 @@ static int obj_parse_cmd(struct etmem_conf *conf, struct mem_proj *proj)
         }
     }
 
-    printf("obj cmd %s is not supportted.\n", cmd);
+    printf("obj cmd %s is not supported.\n", cmd);
     return -1;
 }
 

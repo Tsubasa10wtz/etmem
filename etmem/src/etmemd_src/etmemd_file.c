@@ -31,7 +31,7 @@ static int parse_item(GKeyFile *config, char *group_name, struct config_item *it
 
     switch (item->type) {
         case INT_VAL:
-            val = (void *)(long long)g_key_file_get_integer(config, group_name, item->key, &error);
+            val = (void *)(long long)g_key_file_get_int64(config, group_name, item->key, &error);
             break;
         case STR_VAL:
             val = (void *)g_key_file_get_string(config, group_name, item->key, &error);

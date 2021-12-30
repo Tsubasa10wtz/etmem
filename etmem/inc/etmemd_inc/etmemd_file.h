@@ -44,4 +44,14 @@ static inline int parse_to_int(void *val)
     return (int)(long long)val;
 }
 
+static inline unsigned int parse_to_uint(void *val)
+{
+    return (unsigned int)(long long)val;
+}
+
+static inline unsigned long parse_to_ulong(void *val)
+{
+    return (unsigned long)(long long)val;
+}
+
 #endif

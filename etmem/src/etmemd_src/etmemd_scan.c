@@ -761,6 +761,8 @@ struct page_refs *etmemd_do_scan(const struct task_pid *tpid, const struct task 
         return NULL;
     }
 
+    struct page_scan *page_scan = (struct page_scan *)tk->eng->proj->scan_param;
+
     if (snprintf_s(pid, PID_STR_MAX_LEN, PID_STR_MAX_LEN - 1, "%u", tpid->pid) <= 0) {
         etmemd_log(ETMEMD_LOG_ERR, "snprintf pid fail %u", tpid->pid);
         return NULL;
@@ -774,7 +776,7 @@ struct page_refs *etmemd_do_scan(const struct task_pid *tpid, const struct task 
     }
 
     /* loop for scanning idle_pages to get result of memory access. */
-    for (i = 0; i < tk->eng->proj->loop; i++) {
+    for (i = 0; i < page_scan->loop; i++) {
         ret = get_page_refs(vmas, pid, &page_refs, NULL, 0);
         if (ret != 0) {
             etmemd_log(ETMEMD_LOG_ERR, "scan operation failed\n");
@@ -783,7 +785,7 @@ struct page_refs *etmemd_do_scan(const struct task_pid *tpid, const struct task 
             page_refs = NULL;
             break;
         }
-        sleep((unsigned)tk->eng->proj->sleep);
+        sleep((unsigned)page_scan->sleep);
     }
 
     free_vmas(vmas);
@@ -841,6 +843,7 @@ void clean_page_sort_unexpected(void *arg)
 struct page_sort *alloc_page_sort(const struct task_pid *tpid)
 {
     struct page_sort *page_sort = NULL;
+    struct page_scan *page_scan = (struct page_scan *)tpid->tk->eng->proj->scan_param;
 
     page_sort = (struct page_sort *)calloc(1, sizeof(struct page_sort));
     if (page_sort == NULL) {
@@ -848,9 +851,9 @@ struct page_sort *alloc_page_sort(const struct task_pid *tpid)
         return NULL;
     }
 
-    page_sort->loop = tpid->tk->eng->proj->loop;
+    page_sort->loop = page_scan->loop;
 
-    page_sort->page_refs_sort = (struct page_refs **)calloc((tpid->tk->eng->proj->loop + 1), sizeof(struct page_refs *));
+    page_sort->page_refs_sort = (struct page_refs **)calloc((page_scan->loop + 1), sizeof(struct page_refs *));
     if (page_sort->page_refs_sort == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "calloc page refs sort failed.\n");
         free(page_sort);

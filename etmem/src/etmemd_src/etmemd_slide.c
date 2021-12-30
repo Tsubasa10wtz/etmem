@@ -35,6 +35,7 @@ static struct memory_grade *slide_policy_interface(struct page_sort **page_sort,
     struct memory_grade *memory_grade = NULL;
     unsigned long need_2_swap_num;
     volatile uint64_t count = 0;
+    struct page_scan *page_scan = (struct page_scan *)tpid->tk->eng->proj->scan_param;
 
     if (slide_params == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "cannot get params for slide\n");
@@ -65,7 +66,7 @@ static struct memory_grade *slide_policy_interface(struct page_sort **page_sort,
     if (need_2_swap_num == 0)
         goto count_out;
 
-    for (int i = 0; i < tpid->tk->eng->proj->loop + 1; i++) {
+    for (int i = 0; i < page_scan->loop + 1; i++) {
         page_refs = &((*page_sort)->page_refs_sort[i]);
 
         while (*page_refs != NULL) {
@@ -201,6 +202,7 @@ static struct config_item g_slide_task_config_items[] = {
 static int slide_fill_task(GKeyFile *config, struct task *tk)
 {
     struct slide_params *params = calloc(1, sizeof(struct slide_params));
+    struct page_scan *page_scan = (struct page_scan *)tk->eng->proj->scan_param;
 
     if (params == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "alloc slide param fail\n");
@@ -213,7 +215,7 @@ static int slide_fill_task(GKeyFile *config, struct task *tk)
         goto free_params;
     }
 
-    if (params->t > tk->eng->proj->loop * WRITE_TYPE_WEIGHT) {
+    if (params->t > page_scan->loop * WRITE_TYPE_WEIGHT) {
         etmemd_log(ETMEMD_LOG_ERR, "engine param T must less than loop.\n");
         goto free_params;
     }
