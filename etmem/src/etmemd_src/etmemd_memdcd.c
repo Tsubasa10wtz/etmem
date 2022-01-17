@@ -243,6 +243,7 @@ static struct page_refs *memdcd_do_scan(const struct task_pid *tpid, const struc
     int ret = 0;
     char pid[PID_STR_MAX_LEN] = {0};
     char *us = "us";
+    struct page_scan *page_scan = NULL;
 
     if(tpid == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "task pid is null\n");
@@ -253,6 +254,8 @@ static struct page_refs *memdcd_do_scan(const struct task_pid *tpid, const struc
         etmemd_log(ETMEMD_LOG_ERR, "task struct is null for pid %u\n", tpid->pid);
         return NULL;
     }
+
+    page_scan = (struct page_scan *)tk->eng->proj->scan_param;
 
     if (snprintf_s(pid, PID_STR_MAX_LEN, PID_STR_MAX_LEN - 1, "%u", tpid->pid) <= 0) {
         etmemd_log(ETMEMD_LOG_ERR, "snprintf pid fail %u", tpid->pid);
@@ -266,7 +269,7 @@ static struct page_refs *memdcd_do_scan(const struct task_pid *tpid, const struc
     }
 
     /* loop for scanning idle_pages to get result of memory access. */
-    for (i = 0; i < tk->eng->proj->loop; i++) {
+    for (i = 0; i < page_scan->loop; i++) {
         ret = get_page_refs(vmas, pid, &page_refs, NULL, 0);
         if (ret != 0) {
             etmemd_log(ETMEMD_LOG_ERR, "scan operation failed\n");
@@ -275,7 +278,7 @@ static struct page_refs *memdcd_do_scan(const struct task_pid *tpid, const struc
             page_refs = NULL;
             break;
         }
-        sleep((unsigned)tk->eng->proj->sleep);
+        sleep((unsigned)page_scan->sleep);
     }
 
     free_vmas(vmas);
