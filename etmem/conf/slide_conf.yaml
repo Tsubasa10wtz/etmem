@@ -4,6 +4,7 @@ scan_type=page
 loop=1
 interval=1
 sleep=1
+sysmem_threshold=50
 
 [engine]
 name=slide
@@ -17,3 +18,4 @@ type=name
 value=mysql
 T=1
 max_threads=1
+swap_threshold=10g

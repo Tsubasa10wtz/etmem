@@ -42,6 +42,7 @@ struct project {
     char *name;
     enum scan_type type;
     void *scan_param;
+    int sysmem_threshold;
     bool start;
     struct engine *engs;
 

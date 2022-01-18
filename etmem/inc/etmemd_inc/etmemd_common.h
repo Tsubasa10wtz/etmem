@@ -21,6 +21,7 @@
 
 #define PROC_PATH "/proc/"
 #define STATUS_FILE "/status"
+#define PROC_MEMINFO "meminfo"
 #define SWAPIN "SwapIN"
 #define VMRSS "VmRSS"
 #define VMSWAP "VmSwap"
@@ -30,13 +31,20 @@
 #define ETMEMD_MAX_PARAMETER_NUM 6
 #define BYTE_TO_KB(s) ((s) >> 10)
 #define KB_TO_BYTE(s) ((s) << 10)
+#define CONVERT_GB_2_KB (1024 * 1024)
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 
 /* in some system the max length of pid may be larger than 5, so we use 10 herr */
 #define PID_STR_MAX_LEN 10
+#define SWAP_THRESHOLD_MAX_LEN          10
 
 #define PIPE_FD_LEN 2
+
+enum swap_type {
+    DONT_SWAP = 0,
+    DO_SWAP,
+};
 
 /*
  * function: parse cmdline passed to etmemd server.
@@ -64,5 +72,7 @@ unsigned long get_pagesize(void);
 int get_mem_from_proc_file(const char *pid, const char *file_name, unsigned long *data, const char *cmpstr);
 
 int dprintf_all(int fd, const char *format, ...);
+
+int get_swap_threshold_inKB(char *string);
 
 #endif

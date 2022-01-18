@@ -30,12 +30,13 @@
 #include "etmemd_file.h"
 #include "etmemd_log.h"
 
-#define MAX_INTERVAL_VALUE  1200
-#define MAX_SLEEP_VALUE     1200
-#define MAX_LOOP_VALUE      120
+#define MAX_INTERVAL_VALUE              1200
+#define MAX_SLEEP_VALUE                 1200
+#define MAX_LOOP_VALUE                  120
+#define MAX_SYSMEM_THRESHOLD_VALUE      100
 
-#define MAX_OBJ_NAME_LEN    64
-#define MIN_NR_MIN_VAL      3
+#define MAX_OBJ_NAME_LEN                64
+#define MIN_NR_MIN_VAL                  3
 
 static SLIST_HEAD(project_list, project) g_projects = SLIST_HEAD_INITIALIZER(g_projects);
 
@@ -630,9 +631,27 @@ static int fill_project_scan_type(void *obj, void *val)
     return 0;
 }
 
+/* fill the project parameter: sysmem_threshold
+ * sysmem_threshold: [0, 100]. do not swap any memory out if system free memory is higher than sysmem_threshold */
+static int fill_project_sysmem_threshold(void *obj, void *val)
+{
+    struct project *proj = (struct project *)obj;
+    int sysmem_threshold = parse_to_int(val);
+
+    if (sysmem_threshold < 0 || sysmem_threshold > MAX_SYSMEM_THRESHOLD_VALUE) {
+        etmemd_log(ETMEMD_LOG_WARN, "invaild project sysmem_threshold value %d, it must between 0 and 100.\n",
+                   sysmem_threshold, MAX_SYSMEM_THRESHOLD_VALUE);
+        sysmem_threshold = -1;
+    }
+
+    proj->sysmem_threshold = sysmem_threshold;
+    return 0;
+}
+
 static struct config_item g_project_config_items[] = {
     {"name", STR_VAL, fill_project_name, false},
     {"scan_type", STR_VAL, fill_project_scan_type, false},
+    {"sysmem_threshold", INT_VAL, fill_project_sysmem_threshold, true},
 };
 
 static void clear_project(struct project *proj)
@@ -688,6 +707,9 @@ enum opt_result etmemd_project_add(GKeyFile *config)
         etmemd_log(ETMEMD_LOG_ERR, "alloc memory for project fail\n");
         return OPT_INTER_ERR;
     }
+
+    proj->sysmem_threshold = -1;
+
     if (project_fill_by_conf(config, proj) != 0) {
         etmemd_log(ETMEMD_LOG_ERR, "fill project from configuration file fail\n");
         free(proj);

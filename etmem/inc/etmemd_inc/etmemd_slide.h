@@ -22,6 +22,7 @@
 struct slide_params {
     struct task_executor *executor;
     int t;          /* watermark */
+    int swap_threshold;
     uint8_t dram_percent;
 };
 

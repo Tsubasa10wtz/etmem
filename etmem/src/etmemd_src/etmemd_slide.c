@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
+#include <unistd.h>
 
 #include "securec.h"
 #include "etmemd_log.h"
@@ -106,12 +107,114 @@ static int slide_do_migrate(unsigned int pid, const struct memory_grade *memory_
     return ret;
 }
 
+static int check_sysmem_lower_threshold(struct task_pid *tk_pid)
+{
+    unsigned long mem_total;
+    unsigned long mem_free;
+    int vm_cmp;
+    int ret;
+
+    ret = get_mem_from_proc_file(NULL, PROC_MEMINFO, &mem_total, "MemTotal");
+    if (ret != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "get memtotal fail\n");
+        return DONT_SWAP;
+    }
+
+    ret = get_mem_from_proc_file(NULL, PROC_MEMINFO, &mem_free, "MemFree");
+    if (ret != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "get memfree fail\n");
+        return DONT_SWAP;
+    }
+
+    /* Calculate the free memory percentage in 0 - 100 */
+    vm_cmp = (mem_free * 100) / mem_total;
+    if (vm_cmp < tk_pid->tk->eng->proj->sysmem_threshold) {
+        return DO_SWAP;
+    }
+
+    return DONT_SWAP;
+}
+
+static int check_pid_should_swap(const char *pid, unsigned long vmrss, const struct task_pid *tk_pid)
+{
+    unsigned long vmswap;
+    unsigned long vmcmp;
+    int ret;
+
+    ret = get_mem_from_proc_file(pid, STATUS_FILE, &vmswap, "VmSwap");
+    if (ret != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "get VmSwap fail\n");
+        return DONT_SWAP;
+    }
+
+    /* Calculate the total amount of memory that can be swappout for the current process
+     * and check whether the memory is larger than the current swapout amount.
+     * If true, continue swap-out; otherwise, abort the swap-out process. */
+    vmcmp = (vmrss + vmswap) / 100 * tk_pid->tk->eng->proj->sysmem_threshold;
+    if (vmcmp > vmswap) {
+        return DO_SWAP;
+    }
+
+    return DONT_SWAP;
+}
+
+static int check_pidmem_lower_threshold(struct task_pid *tk_pid)
+{
+    struct slide_params *params = NULL;
+    unsigned long vmrss;
+    int ret;
+    char pid_str[PID_STR_MAX_LEN] = {0};
+
+    params = (struct slide_params *)tk_pid->tk->params;
+    if (params == NULL) {
+        return DONT_SWAP;
+    }
+
+    if (snprintf_s(pid_str, PID_STR_MAX_LEN, PID_STR_MAX_LEN - 1, "%u", tk_pid->pid) <= 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "snprintf pid fail %u", tk_pid->pid);
+        return DONT_SWAP;
+    }
+
+    ret = get_mem_from_proc_file(pid_str, STATUS_FILE, &vmrss, "VmRSS");
+    if (ret != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "get VmRSS fail\n");
+        return DONT_SWAP;
+    }
+
+    if (params->swap_threshold == 0) {
+        return check_pid_should_swap(pid_str, vmrss, tk_pid);
+    }
+
+    if ((int)vmrss > params->swap_threshold) {
+        return DO_SWAP;
+    }
+
+    return DONT_SWAP;
+}
+
+static int check_should_swap(struct task_pid *tk_pid)
+{
+    if (tk_pid->tk->eng->proj->sysmem_threshold == -1) {
+        return DO_SWAP;
+    }
+
+    if (check_sysmem_lower_threshold(tk_pid) == DONT_SWAP) {
+        return DONT_SWAP;
+    }
+
+    return check_pidmem_lower_threshold(tk_pid);
+}
+
 static void *slide_executor(void *arg)
 {
     struct task_pid *tk_pid = (struct task_pid *)arg;
     struct page_refs *page_refs = NULL;
     struct memory_grade *memory_grade = NULL;
     struct page_sort *page_sort = NULL;
+
+    if (check_should_swap(tk_pid) == DONT_SWAP) {
+        return NULL;
+    }
 
     /* register cleanup function in case of unexpected cancellation detected,
      * and register for memory_grade first, because it needs to clean after page_refs is cleaned */
@@ -194,8 +297,28 @@ static int fill_task_dram_percent(void *obj, void *val)
     return 0;
 }
 
+static int fill_task_swap_threshold(void *obj, void *val)
+{
+    struct slide_params *params = (struct slide_params *)obj;
+    char *swap_threshold_string = (char *)val;
+    int swap_threshold = get_swap_threshold_inKB(swap_threshold_string);
+
+    free(swap_threshold_string);
+
+    if (swap_threshold < 0) {
+        etmemd_log(ETMEMD_LOG_WARN,
+                   "parse swap_threshold failed.\n");
+        return -1;
+    }
+
+    params->swap_threshold = swap_threshold;
+
+    return 0;
+}
+
 static struct config_item g_slide_task_config_items[] = {
     {"T", INT_VAL, fill_task_threshold, false},
+    {"swap_threshold", STR_VAL, fill_task_swap_threshold, true},
     {"dram_percent", INT_VAL, fill_task_dram_percent, true},
 };
 

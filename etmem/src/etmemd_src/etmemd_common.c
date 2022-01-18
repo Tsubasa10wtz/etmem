@@ -256,7 +256,7 @@ static char *etmemd_get_proc_file_str(const char *pid, const char *file)
     char *file_name = NULL;
     size_t file_str_size;
 
-    file_str_size = strlen(PROC_PATH) + strlen(pid) + strlen(file) + 1;
+    file_str_size = strlen(PROC_PATH) + strlen(file) + 1 + (pid == NULL ? 0 : strlen(pid));
     file_name = (char *)calloc(file_str_size, sizeof(char));
     if (file_name == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "malloc for %s path fail\n", file);
@@ -264,7 +264,7 @@ static char *etmemd_get_proc_file_str(const char *pid, const char *file)
     }
 
     if (snprintf_s(file_name, file_str_size, file_str_size - 1, 
-                    "%s%s%s", PROC_PATH, pid, file) == -1) {
+                    "%s%s%s", PROC_PATH, pid ? pid : "", file) == -1) {
         etmemd_log(ETMEMD_LOG_ERR, "snprintf for %s fail\n", file);
         free(file_name);
         return NULL;
@@ -494,4 +494,58 @@ unsigned long get_pagesize(void)
     }
 
     return (unsigned long)pagesize;
+}
+
+int get_swap_threshold_inKB(char *string)
+{
+    int len;
+    int i;
+    int ret = -1;
+    char *swap_threshold_string = NULL;
+    int swap_threshold_inGB;
+    int swap_threshold_inKB;
+
+    if (string == NULL) {
+        goto out;
+    }
+
+    len = strlen(string);
+    if (len > SWAP_THRESHOLD_MAX_LEN) {
+        etmemd_log(ETMEMD_LOG_ERR, "swap_threshold string is too long.\n");
+        goto out;
+    }
+
+    swap_threshold_string = (char *)calloc(len, sizeof(char));
+    if (swap_threshold_string == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "calloc swap_threshold_string fail.\n");
+        goto out;
+    }
+
+    for (i = 0; i < len - 1; i++) {
+        if (isdigit(string[i])) {
+            swap_threshold_string[i] = string[i];
+            continue;
+        }
+        etmemd_log(ETMEMD_LOG_ERR, "the swap_threshold contain wrong parameter.\n");
+        goto free_out;
+    }
+
+    if (string[i] != 'g' && string[i] != 'G') {
+        etmemd_log(ETMEMD_LOG_ERR, "the swap_threshold should in G or g.\n");
+        goto free_out;
+    }
+
+    if (get_int_value(swap_threshold_string, &swap_threshold_inGB) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "get_int_value swap_threshold faild.\n");
+        goto free_out;
+    }
+
+    swap_threshold_inKB = swap_threshold_inGB * CONVERT_GB_2_KB;
+    ret = swap_threshold_inKB;
+
+free_out:
+    free(swap_threshold_string);
+
+out:
+    return ret;
 }
