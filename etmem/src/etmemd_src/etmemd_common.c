@@ -261,7 +261,7 @@ static char *etmemd_get_proc_file_str(const char *pid, const char *file)
     }
 
     if (snprintf_s(file_name, file_str_size, file_str_size - 1, 
-                    "%s%s%s", PROC_PATH, pid ? pid : "", file) == -1) {
+                    "%s%s%s", PROC_PATH, pid == NULL ? "" : pid, file) == -1) {
         etmemd_log(ETMEMD_LOG_ERR, "snprintf for %s fail\n", file);
         free(file_name);
         return NULL;
@@ -274,8 +274,8 @@ int etmemd_send_ioctl_cmd(FILE *fp, struct ioctl_para *request)
 {
     int fd = -1;
 
-    if (fp == NULL) {
-        etmemd_log(ETMEMD_LOG_ERR, "send ioctl cmd fail, fp is null\n");
+    if (fp == NULL || request == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "send ioctl cmd fail, para is null\n");
         return -1;
     }
 
@@ -285,8 +285,8 @@ int etmemd_send_ioctl_cmd(FILE *fp, struct ioctl_para *request)
         return -1;
     }
 
-    if (request == NULL || ioctl(fd, request->ioctl_cmd, &request->ioctl_parameter) != 0) {
-        etmemd_log(ETMEMD_LOG_ERR, "send ioctl cmd fail, request is wrong\n");
+    if (ioctl(fd, request->ioctl_cmd, &request->ioctl_parameter) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "ioctl failed\n");
         return -1;
     }
 
@@ -297,6 +297,11 @@ FILE *etmemd_get_proc_file(const char *pid, const char *file, const char *mode)
 {
     char *file_name = NULL;
     FILE *fp = NULL;
+
+    if (file == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "etmemd_get_proc_file file should not be NULL\n");
+        return NULL;
+    }
 
     file_name = etmemd_get_proc_file_str(pid, file);
     if (file_name == NULL) {
@@ -498,22 +503,21 @@ unsigned long get_pagesize(void)
     return (unsigned long)pagesize;
 }
 
-int get_swap_threshold_inKB(char *string)
+int get_swap_threshold_inKB(const char *string, unsigned long *value)
 {
     int len;
     int i;
     int ret = -1;
     char *swap_threshold_string = NULL;
-    int swap_threshold_inGB;
-    int swap_threshold_inKB;
+    unsigned long swap_threshold_inGB;
 
-    if (string == NULL) {
+    if (string == NULL || value == NULL) {
         goto out;
     }
 
     len = strlen(string);
-    if (len > SWAP_THRESHOLD_MAX_LEN) {
-        etmemd_log(ETMEMD_LOG_ERR, "swap_threshold string is too long.\n");
+    if (len == 0 || len > SWAP_THRESHOLD_MAX_LEN) {
+        etmemd_log(ETMEMD_LOG_ERR, "swap_threshold string is invalid.\n");
         goto out;
     }
 
@@ -537,13 +541,13 @@ int get_swap_threshold_inKB(char *string)
         goto free_out;
     }
 
-    if (get_int_value(swap_threshold_string, &swap_threshold_inGB) != 0) {
-        etmemd_log(ETMEMD_LOG_ERR, "get_int_value swap_threshold faild.\n");
+    if (get_unsigned_long_value(swap_threshold_string, &swap_threshold_inGB) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "get_unsigned_long_value swap_threshold faild.\n");
         goto free_out;
     }
 
-    swap_threshold_inKB = swap_threshold_inGB * CONVERT_GB_2_KB;
-    ret = swap_threshold_inKB;
+    *value = GB_TO_KB(swap_threshold_inGB);
+    ret = 0;
 
 free_out:
     free(swap_threshold_string);

@@ -131,7 +131,8 @@ static bool check_should_reclaim_swapcache(const struct task_pid *tk_pid)
         return false;
     }
 
-    if ((swapcache_total / proj->swapcache_high_wmark) <= (mem_total / MAX_SWAPCACHE_WMARK_VALUE)) {
+    if (swapcache_total == 0 ||
+        (mem_total / swapcache_total) >= (unsigned long)(MAX_SWAPCACHE_WMARK_VALUE / proj->swapcache_high_wmark)) {
         return false;
     }
 
@@ -190,7 +191,10 @@ int etmemd_reclaim_swapcache(const struct task_pid *tk_pid)
     }
 
     if (!tk_pid->tk->eng->proj->wmark_set) {
-        set_swapcache_wmark(tk_pid, pid_str);
+        if (set_swapcache_wmark(tk_pid, pid_str) != 0) {
+            etmemd_log(ETMEMD_LOG_ERR, "set_swapcache_wmark for pid %u fail\n", tk_pid->pid);
+            return -1;
+        }
         tk_pid->tk->eng->proj->wmark_set = true;
     }
 

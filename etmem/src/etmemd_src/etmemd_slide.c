@@ -185,7 +185,7 @@ static int check_pidmem_lower_threshold(struct task_pid *tk_pid)
         return check_pid_should_swap(pid_str, vmrss, tk_pid);
     }
 
-    if ((int)vmrss > params->swap_threshold) {
+    if (vmrss > params->swap_threshold) {
         return DO_SWAP;
     }
 
@@ -305,16 +305,16 @@ static int fill_task_swap_threshold(void *obj, void *val)
 {
     struct slide_params *params = (struct slide_params *)obj;
     char *swap_threshold_string = (char *)val;
-    int swap_threshold = get_swap_threshold_inKB(swap_threshold_string);
+    unsigned long swap_threshold;
 
-    free(swap_threshold_string);
-
-    if (swap_threshold < 0) {
+    if (get_swap_threshold_inKB(swap_threshold_string, &swap_threshold) != 0) {
         etmemd_log(ETMEMD_LOG_WARN,
                    "parse swap_threshold failed.\n");
+        free(swap_threshold_string);
         return -1;
     }
-
+   
+    free(swap_threshold_string);
     params->swap_threshold = swap_threshold;
 
     return 0;

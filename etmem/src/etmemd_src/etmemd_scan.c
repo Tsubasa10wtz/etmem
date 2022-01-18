@@ -672,7 +672,8 @@ struct page_refs **walk_vmas(int fd,
 * this parameter is used only in the dynamic engine to calculate the swap-in rate.
 * In other policies, NULL can be directly transmitted.
 * */
-int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **page_refs, unsigned long *use_rss, int flags)
+int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **page_refs,
+                  unsigned long *use_rss, struct ioctl_para *ioctl_para)
 {
     u_int64_t i;
     FILE *scan_fp = NULL;
@@ -680,10 +681,6 @@ int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **p
     struct vma *vma = vmas->vma_list;
     struct page_refs **tmp_page_refs = NULL;
     struct walk_address walk_address = {0, 0, 0};
-    struct ioctl_para ioctl_para = {
-        .ioctl_cmd = IDLE_SCAN_ADD_FLAGS,
-        .ioctl_parameter = flags,
-    };
 
     scan_fp = etmemd_get_proc_file(pid, IDLE_SCAN_FILE, "r");
     if (scan_fp == NULL) {
@@ -691,7 +688,8 @@ int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **p
         return -1;
     }
 
-    if (flags != 0 && etmemd_send_ioctl_cmd(scan_fp, &ioctl_para) != 0) {
+    if (ioctl_para != NULL && ioctl_para->ioctl_parameter != 0
+            && etmemd_send_ioctl_cmd(scan_fp, ioctl_para) != 0) {
         fclose(scan_fp);
         etmemd_log(ETMEMD_LOG_ERR, "etmemd_send_ioctl_cmd %s file for pid %s fail\n", IDLE_SCAN_FILE, pid);
         return -1;
@@ -734,6 +732,7 @@ int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **p
 
 int etmemd_get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **page_refs, int flags)
 {
+    struct ioctl_para ioctl_para;
     if (!g_exp_scan_inited) {
         etmemd_log(ETMEMD_LOG_ERR, "scan module is not inited before etmemd_get_page_refs\n");
         return -1;
@@ -744,7 +743,10 @@ int etmemd_get_page_refs(const struct vmas *vmas, const char *pid, struct page_r
         return -1;
     }
 
-    return get_page_refs(vmas, pid, page_refs, NULL, flags & ALL_SCAN_FLAGS);
+    ioctl_para.ioctl_parameter = flags & ALL_SCAN_FLAGS;
+    ioctl_para.ioctl_cmd = IDLE_SCAN_ADD_FLAGS;
+
+    return get_page_refs(vmas, pid, page_refs, NULL, &ioctl_para);
 }
 
 void etmemd_free_page_refs(struct page_refs *pf)
@@ -765,6 +767,7 @@ struct page_refs *etmemd_do_scan(const struct task_pid *tpid, const struct task 
     struct page_refs *page_refs = NULL;
     int ret;
     char pid[PID_STR_MAX_LEN] = {0};
+    struct ioctl_para ioctl_para = {0};
 
     if (tk == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "task struct is null for pid %u\n", tpid->pid);
@@ -785,9 +788,14 @@ struct page_refs *etmemd_do_scan(const struct task_pid *tpid, const struct task 
         return NULL;
     }
 
+    ioctl_para.ioctl_cmd = VMA_SCAN_ADD_FLAGS;
+    if (tk->swap_flag != 0) {
+        ioctl_para.ioctl_parameter = VMA_SCAN_FLAG;
+    }
+
     /* loop for scanning idle_pages to get result of memory access. */
     for (i = 0; i < page_scan->loop; i++) {
-        ret = get_page_refs(vmas, pid, &page_refs, NULL, 0);
+        ret = get_page_refs(vmas, pid, &page_refs, NULL, &ioctl_para);
         if (ret != 0) {
             etmemd_log(ETMEMD_LOG_ERR, "scan operation failed\n");
             /* free page_refs nodes already exist */

@@ -34,7 +34,7 @@
 
 #define BYTE_TO_KB(s)                   ((s) >> 10)
 #define KB_TO_BYTE(s)                   ((s) << 10)
-#define CONVERT_GB_2_KB                 (1024 * 1024)
+#define GB_TO_KB(s)                     ((s) << 20)
 
 #define MAX_SWAPCACHE_WMARK_VALUE       100
 
@@ -46,17 +46,9 @@
 
 #define PIPE_FD_LEN                     2
 
-#define IDLE_SCAN_MAGIC                 0x66
-#define IDLE_SCAN_ADD_FLAGS             _IOW(IDLE_SCAN_MAGIC, 0x0, unsigned int)
-
-enum swap_type {
-    DONT_SWAP = 0,
-    DO_SWAP,
-};
-
 struct ioctl_para {
     unsigned long ioctl_cmd;
-    int ioctl_parameter;
+    unsigned int ioctl_parameter;
 };
 
 /*
@@ -87,6 +79,6 @@ int get_mem_from_proc_file(const char *pid, const char *file_name, unsigned long
 
 int dprintf_all(int fd, const char *format, ...);
 
-int get_swap_threshold_inKB(char *string);
+int get_swap_threshold_inKB(const char *string, unsigned long *value);
 
 #endif

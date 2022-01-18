@@ -21,3 +21,4 @@ value=mysql
 T=1
 max_threads=1
 swap_threshold=10g
+swap_flag=yes
