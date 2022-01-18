@@ -18,32 +18,45 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <sys/ioctl.h>
 
-#define PROC_PATH "/proc/"
-#define STATUS_FILE "/status"
-#define PROC_MEMINFO "meminfo"
-#define SWAPIN "SwapIN"
-#define VMRSS "VmRSS"
-#define VMSWAP "VmSwap"
-#define FILE_LINE_MAX_LEN 1024
-#define KEY_VALUE_MAX_LEN 64
-#define DECIMAL_RADIX 10
-#define ETMEMD_MAX_PARAMETER_NUM 6
-#define BYTE_TO_KB(s) ((s) >> 10)
-#define KB_TO_BYTE(s) ((s) << 10)
-#define CONVERT_GB_2_KB (1024 * 1024)
+#define PROC_PATH                       "/proc/"
+#define STATUS_FILE                     "/status"
+#define PROC_MEMINFO                    "meminfo"
+#define SWAPIN                          "SwapIN"
+#define VMRSS                           "VmRSS"
+#define VMSWAP                          "VmSwap"
 
-#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
+#define FILE_LINE_MAX_LEN               1024
+#define KEY_VALUE_MAX_LEN               64
+#define DECIMAL_RADIX                   10
+#define ETMEMD_MAX_PARAMETER_NUM        6
+
+#define BYTE_TO_KB(s)                   ((s) >> 10)
+#define KB_TO_BYTE(s)                   ((s) << 10)
+#define CONVERT_GB_2_KB                 (1024 * 1024)
+
+#define MAX_SWAPCACHE_WMARK_VALUE       100
+
+#define ARRAY_SIZE(array)               (sizeof(array) / sizeof((array)[0]))
 
 /* in some system the max length of pid may be larger than 5, so we use 10 herr */
-#define PID_STR_MAX_LEN 10
+#define PID_STR_MAX_LEN                 10
 #define SWAP_THRESHOLD_MAX_LEN          10
 
-#define PIPE_FD_LEN 2
+#define PIPE_FD_LEN                     2
+
+#define IDLE_SCAN_MAGIC                 0x66
+#define IDLE_SCAN_ADD_FLAGS             _IOW(IDLE_SCAN_MAGIC, 0x0, unsigned int)
 
 enum swap_type {
     DONT_SWAP = 0,
     DO_SWAP,
+};
+
+struct ioctl_para {
+    unsigned long ioctl_cmd;
+    int ioctl_parameter;
 };
 
 /*
@@ -65,7 +78,8 @@ int get_unsigned_int_value(const char *val, unsigned int *value);
 int get_unsigned_long_value(const char *val, unsigned long *value);
 void etmemd_safe_free(void **ptr);
 
-FILE *etmemd_get_proc_file(const char *pid, const char *file, int flags, const char *mode);
+FILE *etmemd_get_proc_file(const char *pid, const char *file, const char *mode);
+int etmemd_send_ioctl_cmd(FILE *fp, struct ioctl_para *request);
 
 int get_keyword_and_value(const char *str, char *key, char *val);
 unsigned long get_pagesize(void);

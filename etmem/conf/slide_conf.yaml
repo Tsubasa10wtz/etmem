@@ -5,6 +5,8 @@ loop=1
 interval=1
 sleep=1
 sysmem_threshold=50
+swapcache_high_wmark=10
+swapcache_low_wmark=6
 
 [engine]
 name=slide

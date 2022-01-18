@@ -43,7 +43,10 @@ struct project {
     enum scan_type type;
     void *scan_param;
     int sysmem_threshold;
+    int swapcache_high_wmark;
+    int swapcache_low_wmark;
     bool start;
+    bool wmark_set;
     struct engine *engs;
 
     SLIST_ENTRY(project) entry;

@@ -32,9 +32,6 @@
 #include "etmemd_rpc.h"
 #include "etmemd_log.h"
 
-#define IDLE_SCAN_MAGIC         0x66
-#define IDLE_SCAN_ADD_FLAGS     _IOW(IDLE_SCAN_MAGIC, 0x0, unsigned int)
-
 static void usage(void)
 {
     printf("\nusage of etmemd:\n"
@@ -273,10 +270,32 @@ static char *etmemd_get_proc_file_str(const char *pid, const char *file)
     return file_name;
 }
 
-FILE *etmemd_get_proc_file(const char *pid, const char *file, int flags, const char *mode)
+int etmemd_send_ioctl_cmd(FILE *fp, struct ioctl_para *request)
+{
+    int fd = -1;
+
+    if (fp == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "send ioctl cmd fail, fp is null\n");
+        return -1;
+    }
+
+    fd = fileno(fp);
+    if (fd < 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "send ioctl cmd fail, get fd fail\n");
+        return -1;
+    }
+
+    if (request == NULL || ioctl(fd, request->ioctl_cmd, &request->ioctl_parameter) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "send ioctl cmd fail, request is wrong\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+FILE *etmemd_get_proc_file(const char *pid, const char *file, const char *mode)
 {
     char *file_name = NULL;
-    int fd = -1;
     FILE *fp = NULL;
 
     file_name = etmemd_get_proc_file_str(pid, file);
@@ -287,25 +306,8 @@ FILE *etmemd_get_proc_file(const char *pid, const char *file, int flags, const c
     fp = fopen(file_name, mode);
     if (fp == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "open file %s fail\n", file_name);
-        goto free_file_name;
     }
 
-    fd = fileno(fp);
-    if (fd < 0) {
-        etmemd_log(ETMEMD_LOG_ERR, "get fd of file %s fail\n", file_name);
-        fclose(fp);
-        fp = NULL;
-        goto free_file_name;
-    }
-
-    if (flags != 0 && ioctl(fd, IDLE_SCAN_ADD_FLAGS, &flags) != 0) {
-        etmemd_log(ETMEMD_LOG_ERR, "set idle flags for %s fail with %s\n", pid, strerror(errno));
-        fclose(fp);
-        fp = NULL;
-        goto free_file_name;
-    }
-
-free_file_name:
     free(file_name);
     return fp;
 }
@@ -453,7 +455,7 @@ int get_mem_from_proc_file(const char *pid, const char *file_name, unsigned long
     unsigned long val;
     int ret = -1;
 
-    file = etmemd_get_proc_file(pid, file_name, 0, "r");
+    file = etmemd_get_proc_file(pid, file_name, "r");
     if (file == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "cannot open %s for pid %s\n", file_name, pid);
         return ret;

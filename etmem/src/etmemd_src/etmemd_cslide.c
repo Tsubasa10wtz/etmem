@@ -1280,15 +1280,25 @@ static int cslide_scan_vmas(struct cslide_pid_params *params)
     uint64_t i;
     int fd;
     struct cslide_task_params *task_params = params->task_params;
+    struct ioctl_para ioctl_para = {
+        .ioctl_cmd = IDLE_SCAN_ADD_FLAGS,
+        .ioctl_parameter = task_params->scan_flags,
+    };
 
     if (snprintf_s(pid, PID_STR_MAX_LEN, PID_STR_MAX_LEN - 1, "%u", params->pid) <= 0) {
         etmemd_log(ETMEMD_LOG_ERR, "snpintf pid %u fail\n", params->pid);
         return -1;
     }
 
-    scan_fp = etmemd_get_proc_file(pid, IDLE_SCAN_FILE, task_params->scan_flags, "r");
+    scan_fp = etmemd_get_proc_file(pid, IDLE_SCAN_FILE, "r");
     if (scan_fp == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "open %s file for pid %u fail\n", IDLE_SCAN_FILE, params->pid);
+        return -1;
+    }
+
+    if (task_params->scan_flags != 0 && etmemd_send_ioctl_cmd(scan_fp, &ioctl_para) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "etmemd send_ioctl_cmd %s file for pid %u fail\n", IDLE_SCAN_FILE, params->pid);
+        fclose(scan_fp);
         return -1;
     }
 

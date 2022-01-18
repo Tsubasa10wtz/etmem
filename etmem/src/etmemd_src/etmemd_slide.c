@@ -256,6 +256,10 @@ scan_out:
         etmemd_log(ETMEMD_LOG_DEBUG, "slide migrate for pid %u fail\n", tk_pid->pid);
     }
 
+    if (etmemd_reclaim_swapcache(tk_pid) != 0) {
+        etmemd_log(ETMEMD_LOG_DEBUG, "etmemd_reclaim_swapcache pid %u fail\n", tk_pid->pid);
+    }
+
 exit:
     /* clean memory_grade here */
     pthread_cleanup_pop(1);

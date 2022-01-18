@@ -359,7 +359,7 @@ struct vmas *get_vmas_with_flags(const char *pid, char *vmflags_array[], int vmf
         return NULL;
     }
 
-    fp = etmemd_get_proc_file(pid, maps_file, 0, "r");
+    fp = etmemd_get_proc_file(pid, maps_file, "r");
     if (fp == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "open %s file of %s fail\n", maps_file, pid);
         free(ret_vmas);
@@ -680,10 +680,20 @@ int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **p
     struct vma *vma = vmas->vma_list;
     struct page_refs **tmp_page_refs = NULL;
     struct walk_address walk_address = {0, 0, 0};
+    struct ioctl_para ioctl_para = {
+        .ioctl_cmd = IDLE_SCAN_ADD_FLAGS,
+        .ioctl_parameter = flags,
+    };
 
-    scan_fp = etmemd_get_proc_file(pid, IDLE_SCAN_FILE, flags, "r");
+    scan_fp = etmemd_get_proc_file(pid, IDLE_SCAN_FILE, "r");
     if (scan_fp == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "open %s file fail\n", IDLE_SCAN_FILE);
+        return -1;
+    }
+
+    if (flags != 0 && etmemd_send_ioctl_cmd(scan_fp, &ioctl_para) != 0) {
+        fclose(scan_fp);
+        etmemd_log(ETMEMD_LOG_ERR, "etmemd_send_ioctl_cmd %s file for pid %s fail\n", IDLE_SCAN_FILE, pid);
         return -1;
     }
 
