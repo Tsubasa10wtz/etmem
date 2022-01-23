@@ -65,8 +65,7 @@ static struct memory_grade *get_memory_grade(void)
     memory_grade = (struct memory_grade *)calloc(1, sizeof(struct memory_grade));
     CU_ASSERT_PTR_NOT_NULL(memory_grade);
 
-    while (page_refs != NULL)
-    {
+    while (page_refs != NULL) {
         if ((page_refs)->count >= WATER_LINE_TEMP) {
             page_refs = add_page_refs_into_memory_grade(page_refs, &memory_grade->hot_pages);
             continue;
@@ -104,7 +103,7 @@ static void test_etmem_migrate_ok(void)
 
     memory_grade = get_memory_grade();
     CU_ASSERT_PTR_NOT_NULL(memory_grade);
-    CU_ASSERT_EQUAL(etmemd_grade_migrate("1", memory_grade), -1);
+    CU_ASSERT_EQUAL(etmemd_grade_migrate("1", memory_grade), 0);
 
     clean_memory_grade_unexpected(&memory_grade);
     CU_ASSERT_PTR_NULL(memory_grade);
