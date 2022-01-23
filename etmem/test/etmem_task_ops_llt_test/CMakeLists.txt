@@ -1,4 +1,4 @@
-# /******************************************************************************
+s# /******************************************************************************
 #  * Copyright (c) Huawei Technologies Co., Ltd. 2019-2021. All rights reserved.
 #  * etmem is licensed under the Mulan PSL v2.
 #  * You can use this software according to the terms and conditions of the Mulan PSL v2.
@@ -10,7 +10,7 @@
 #  * See the Mulan PSL v2 for more details.
 #  * Author: liubo
 #  * Create: 2021-12-10
-#  * Description: CMakefileList for etmem_socket_ops_llt to compile
+#  * Description: CMakefileList for etmem_task_ops_llt to compile
 #  ******************************************************************************/
 
 project(etmem)
@@ -19,8 +19,8 @@ INCLUDE_DIRECTORIES(../../inc/etmem_inc)
 INCLUDE_DIRECTORIES(../../inc/etmemd_inc)
 INCLUDE_DIRECTORIES(${GLIB2_INCLUDE_DIRS})
 
-SET(EXE etmem_socket_ops_llt)
+SET(EXE etmem_task_ops_llt)
 
-add_executable(${EXE} etmem_socket_ops_llt.c)
+add_executable(${EXE} etmem_task_ops_llt.c)
 
 target_link_libraries(${EXE} cunit ${BUILD_DIR}/lib/libetmemd.so pthread dl rt boundscheck numa ${GLIB2_LIBRARIES})
