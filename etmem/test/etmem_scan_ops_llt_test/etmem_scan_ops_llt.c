@@ -243,7 +243,7 @@ static void test_get_page_refs_valid()
 
     unsigned long use_rss;
 
-    CU_ASSERT_EQUAL(get_page_refs(vmas, pid, &page_refs, &use_rss, 0), 0);
+    CU_ASSERT_EQUAL(get_page_refs(vmas, pid, &page_refs, &use_rss, NULL), 0);
     CU_ASSERT_PTR_NOT_NULL(page_refs);
     CU_ASSERT_NOT_EQUAL(use_rss, 0);
 
@@ -309,7 +309,7 @@ static void test_add_pg_to_mem_grade()
     CU_ASSERT_EQUAL(etmemd_scan_init(), 0);
 
     vma = get_vmas(pid);
-    CU_ASSERT_EQUAL(get_page_refs(vma, pid, &page_refs, NULL, 0), 0);
+    CU_ASSERT_EQUAL(get_page_refs(vma, pid, &page_refs, NULL, NULL), 0);
     page_refs = add_page_refs_into_memory_grade(page_refs, &list);
     CU_ASSERT_PTR_NOT_NULL(page_refs);
     CU_ASSERT_PTR_NOT_NULL(list);

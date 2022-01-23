@@ -20,43 +20,51 @@
 
 #include "etmemd_project.h"
 
-#define CONFIG_NAME "name=%s\n"
-#define CONFIG_INTERVAL "interval=%s\n"
-#define CONFIG_LOOP "loop=%s\n"
-#define CONFIG_SLEEP "sleep=%s\n"
-#define TMP_PROJ_CONFIG "proj_tmp.config"
-#define DEFAULT_PROJ "default_proj"
+#define CONFIG_NAME                         "name=%s\n"
+#define CONFIG_INTERVAL                     "interval=%s\n"
+#define CONFIG_LOOP                         "loop=%s\n"
+#define CONFIG_SLEEP                        "sleep=%s\n"
+#define CONFIG_SYSMEM_THRESHOLD             "sysmem_threshold=%s\n"
+#define CONFIG_SWAPCACHE_HIGH_WMARK         "swapcache_high_wmark=%s\n"
+#define CONFIG_SWAPCACHE_LOW_WMARK          "swapcache_low_wmark=%s\n"
+#define TMP_PROJ_CONFIG                     "proj_tmp.config"
+#define DEFAULT_PROJ                        "default_proj"
 
-#define CONFIG_PROJ "project=%s\n"
-#define TMP_ENG_CONFIG "eng_tmp.config"
+#define CONFIG_PROJ                         "project=%s\n"
+#define TMP_ENG_CONFIG                      "eng_tmp.config"
 
-#define CONFIG_ENG "engine=%s\n"
-#define CONFIG_TYPE "type=%s\n"
-#define CONFIG_VALUE "value=%s\n"
-#define TMP_TASK_CONFIG "task_tmp.config"
-#define DEFAULT_TASK "default_task"
+#define CONFIG_ENG                          "engine=%s\n"
+#define CONFIG_TYPE                         "type=%s\n"
+#define CONFIG_VALUE                        "value=%s\n"
+#define TMP_TASK_CONFIG                     "task_tmp.config"
+#define DEFAULT_TASK                        "default_task"
 
-#define CONFIG_MAX_THREADS "max_threads=%s\n"
-#define CONFIG_T "T=%s\n"
+#define CONFIG_MAX_THREADS                  "max_threads=%s\n"
+#define CONFIG_T                            "T=%s\n"
+#define CONFIG_SWAP_FLAG                    "swap_flag=%s\n"
+#define CONFIG_SWAP_THRESHOLD               "swap_threshold=%s\n"
 
-#define CONFIG_NODE_PAIR "node_pair=%s\n"
-#define CONFIG_THRESH "hot_threshold=%s\n"
-#define CONFIG_QUOTA "node_mig_quota=%s\n"
-#define CONFIG_RESV "node_hot_reserve=%s\n"
+#define CONFIG_NODE_PAIR                    "node_pair=%s\n"
+#define CONFIG_THRESH                       "hot_threshold=%s\n"
+#define CONFIG_QUOTA                        "node_mig_quota=%s\n"
+#define CONFIG_RESV                         "node_hot_reserve=%s\n"
 
-#define CONFIG_VM_FLAGS "vm_flags=%s\n"
-#define CONFIG_ANON_ONLY "anon_only=%s\n"
-#define CONFIG_IGN_HOST "igno_host=%s\n"
+#define CONFIG_VM_FLAGS                     "vm_flags=%s\n"
+#define CONFIG_ANON_ONLY                    "anon_only=%s\n"
+#define CONFIG_IGN_HOST                     "ign_host=%s\n"
 
-#define ONE_NODE_PAIR 2
-#define TWO_NODE_PAIR 4
-#define THREE_NODE_PAIR 5
+#define ONE_NODE_PAIR                       2
+#define TWO_NODE_PAIR                       4
+#define THREE_NODE_PAIR                     6
 
 
 struct proj_test_param {
     const char *sleep;
     const char *interval;
     const char *loop;
+    const char *sysmem_threshold;
+    const char *swapcache_high_wmark;
+    const char *swapcache_low_wmark;
     const char *proj_name;
     const char *file_name;
     enum opt_result expt;
@@ -81,6 +89,8 @@ struct slide_task_test_param {
     struct task_test_param task_param;
     const char *max_threads;
     const char *T;
+    const char *swap_flag;
+    const char *swap_threshold;
 };
 
 struct cslide_eng_test_param {

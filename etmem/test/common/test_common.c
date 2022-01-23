@@ -63,6 +63,18 @@ void construct_proj_file(struct proj_test_param *param)
     if (param->sleep != NULL) {
         CU_ASSERT_NOT_EQUAL(fprintf(file, CONFIG_SLEEP, param->sleep), -1);
     }
+    if (param->sysmem_threshold != NULL) {
+        CU_ASSERT_NOT_EQUAL(fprintf(file, CONFIG_SYSMEM_THRESHOLD,
+                                    param->sysmem_threshold), -1);
+    }
+    if (param->swapcache_high_wmark != NULL) {
+        CU_ASSERT_NOT_EQUAL(fprintf(file, CONFIG_SWAPCACHE_HIGH_WMARK,
+                                    param->swapcache_high_wmark), -1);
+    }
+    if (param->swapcache_low_wmark != NULL) {
+        CU_ASSERT_NOT_EQUAL(fprintf(file, CONFIG_SWAPCACHE_LOW_WMARK,
+                                    param->swapcache_low_wmark), -1);
+    }
     fclose(file);
 }
 
@@ -83,12 +95,15 @@ void init_proj_param(struct proj_test_param *param)
     param->sleep = "1";
     param->interval = "1";
     param->loop = "1";
+    param->sysmem_threshold = NULL;
+    param->swapcache_high_wmark = NULL;
+    param->swapcache_low_wmark = NULL;
     param->file_name = TMP_PROJ_CONFIG;
     param->proj_name = DEFAULT_PROJ;
     param->expt = OPT_SUCCESS;
 }
 
-void do_add_proj_test(struct proj_test_param * param)
+void do_add_proj_test(struct proj_test_param *param)
 {
     GKeyFile *config = NULL;
 
@@ -155,16 +170,16 @@ void construct_task_file(struct task_test_param *param)
         CU_ASSERT_NOT_EQUAL(fprintf(file, CONFIG_NAME, param->name), -1);
     }
     if (param->proj != NULL) {
-        CU_ASSERT_NOT_EQUAL(fprintf(file, CONFIG_PROJ, param->name), -1);
+        CU_ASSERT_NOT_EQUAL(fprintf(file, CONFIG_PROJ, param->proj), -1);
     }
     if (param->eng != NULL) {
-        CU_ASSERT_NOT_EQUAL(fprintf(file, CONFIG_ENG, param->name), -1);
+        CU_ASSERT_NOT_EQUAL(fprintf(file, CONFIG_ENG, param->eng), -1);
     }
     if (param->type != NULL) {
-        CU_ASSERT_NOT_EQUAL(fprintf(file, CONFIG_TYPE, param->name), -1);
+        CU_ASSERT_NOT_EQUAL(fprintf(file, CONFIG_TYPE, param->type), -1);
     }
     if (param->value != NULL) {
-        CU_ASSERT_NOT_EQUAL(fprintf(file, CONFIG_VALUE, param->name), -1);
+        CU_ASSERT_NOT_EQUAL(fprintf(file, CONFIG_VALUE, param->value), -1);
     }
     fclose(file);
 }
@@ -174,6 +189,8 @@ void init_slide_task(struct slide_task_test_param *param)
     init_task_param(&param->task_param, "slide");
     param->max_threads = "1";
     param->T = "1";
+    param->swap_flag = NULL;
+    param->swap_threshold = NULL;
 }
 
 void add_slide_task(struct slide_task_test_param *param)
@@ -188,6 +205,12 @@ void add_slide_task(struct slide_task_test_param *param)
     }
     if (param->T != NULL) {
         CU_ASSERT_NOT_EQUAL(fprintf(file, CONFIG_T, param->T), -1);
+    }
+    if (param->swap_flag != NULL) {
+        CU_ASSERT_NOT_EQUAL(fprintf(file, CONFIG_SWAP_FLAG, param->swap_flag), -1);
+    }
+    if (param->swap_threshold != NULL) {
+        CU_ASSERT_NOT_EQUAL(fprintf(file, CONFIG_SWAP_THRESHOLD, param->swap_threshold), -1);
     }
     fclose(file);
 }
