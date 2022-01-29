@@ -20,6 +20,7 @@
 #include "etmemd.h"
 #include "etmemd_task.h"
 #include "etmemd_scan_exp.h"
+#include "etmemd_common.h"
 
 #define VMA_SEG_CNT_MAX         6
 #define VMA_PERMS_STR_LEN       5
@@ -34,7 +35,10 @@
 #define SMAPS_FILE              "/smaps"
 #define VMFLAG_HEAD             "VmFlags"
 
-#define ALL_SCAN_FLAGS          (SCAN_AS_HUGE | SCAN_IGN_HOST)
+#define IDLE_SCAN_MAGIC         0x66
+#define IDLE_SCAN_ADD_FLAGS     _IOW(IDLE_SCAN_MAGIC, 0x0, unsigned int)
+#define VMA_SCAN_ADD_FLAGS      _IOW(IDLE_SCAN_MAGIC, 0x2, unsigned int)
+#define ALL_SCAN_FLAGS          (SCAN_AS_HUGE | SCAN_IGN_HOST | VMA_SCAN_FLAG)
 
 enum page_idle_type {
     PTE_ACCESS = 0,     /* 4k page */
@@ -70,7 +74,8 @@ struct page_refs *etmemd_do_scan(const struct task_pid *tpid, const struct task 
 void free_vmas(struct vmas *vmas);
 
 struct page_refs **walk_vmas(int fd, struct walk_address *walk_address, struct page_refs **pf, unsigned long *use_rss);
-int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **page_refs, unsigned long *use_rss, int flags);
+int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **page_refs,
+                  unsigned long *use_rss, struct ioctl_para *ioctl_para);
 
 int split_vmflags(char ***vmflags_array, char *vmflags);
 struct vmas *get_vmas_with_flags(const char *pid, char **vmflags_array, int vmflags_num, bool is_anon_only);

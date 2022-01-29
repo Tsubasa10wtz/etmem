@@ -15,13 +15,23 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
 
 #include "securec.h"
 #include "etmemd.h"
 #include "etmemd_migrate.h"
+#include "etmemd_project.h"
 #include "etmemd_common.h"
 #include "etmemd_slide.h"
 #include "etmemd_log.h"
+
+#define RECLAIM_SWAPCACHE_MAGIC         0x77
+#define RECLAIM_SWAPCACHE_ON            _IOW(RECLAIM_SWAPCACHE_MAGIC, 0x1, unsigned int)
+#define SET_SWAPCACHE_WMARK             _IOW(RECLAIM_SWAPCACHE_MAGIC, 0x2, unsigned int)
 
 static char *get_swap_string(struct page_refs **page_refs, int batchsize)
 {
@@ -70,7 +80,7 @@ static int etmemd_migrate_mem(const char *pid, const char *grade_path, struct pa
         return 0;
     }
 
-    fp = etmemd_get_proc_file(pid, grade_path, 0, "r+");
+    fp = etmemd_get_proc_file(pid, grade_path, "r+");
     if (fp == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "cannot open %s for pid %s\n", grade_path, pid);
         return -1;
@@ -98,6 +108,111 @@ static int etmemd_migrate_mem(const char *pid, const char *grade_path, struct pa
     return 0;
 }
 
+static bool check_should_reclaim_swapcache(const struct task_pid *tk_pid)
+{
+    struct project *proj = tk_pid->tk->eng->proj;
+    unsigned long mem_total;
+    unsigned long swapcache_total;
+    int ret;
+
+    if (proj->swapcache_high_wmark == 0) {
+        return false;
+    }
+
+    ret = get_mem_from_proc_file(NULL, PROC_MEMINFO, &mem_total, "MemTotal");
+    if (ret != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "get memtotal fail\n");
+        return false;
+    }
+
+    ret = get_mem_from_proc_file(NULL, PROC_MEMINFO, &swapcache_total, "SwapCached");
+    if (ret != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "get swapcache_total fail\n");
+        return false;
+    }
+
+    if (swapcache_total == 0 ||
+        (mem_total / swapcache_total) >= (unsigned long)(MAX_SWAPCACHE_WMARK_VALUE / proj->swapcache_high_wmark)) {
+        return false;
+    }
+
+    return true;
+}
+
+static int set_swapcache_wmark(const struct task_pid *tk_pid, const char *pid_str)
+{
+    int swapcache_wmark;
+    struct project *proj = tk_pid->tk->eng->proj;
+    FILE *fp = NULL;
+    struct ioctl_para ioctl_para = {
+        .ioctl_cmd = SET_SWAPCACHE_WMARK,
+    };
+
+    swapcache_wmark = (proj->swapcache_low_wmark & 0x00ff) | (proj->swapcache_high_wmark << 8 & 0xff00);
+    ioctl_para.ioctl_parameter = swapcache_wmark;
+
+    fp = etmemd_get_proc_file(pid_str, COLD_PAGE, "r+");
+    if (fp == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "get proc file %s failed.\n", COLD_PAGE);
+        return -1;
+    }
+
+    if (etmemd_send_ioctl_cmd(fp, &ioctl_para) != 0) {
+        fclose(fp);
+        etmemd_log(ETMEMD_LOG_ERR, "set_swapcache_wmark for pid %u fail\n", tk_pid->pid);
+        return -1;
+    }
+
+    fclose(fp);
+    return 0;
+}
+
+int etmemd_reclaim_swapcache(const struct task_pid *tk_pid)
+{
+    char pid_str[PID_STR_MAX_LEN] = {0};
+    FILE *fp = NULL;
+    struct ioctl_para ioctl_para = {
+        .ioctl_cmd = RECLAIM_SWAPCACHE_ON,
+        .ioctl_parameter = 0,
+    };
+
+    if (tk_pid == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "tk_pid is null.\n");
+        return -1;
+    }
+
+    if (!check_should_reclaim_swapcache(tk_pid)) {
+        return 0;
+    }
+
+    if (snprintf_s(pid_str, PID_STR_MAX_LEN, PID_STR_MAX_LEN - 1, "%u", tk_pid->pid) <= 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "snprintf pid fail %u", tk_pid->pid);
+        return -1;
+    }
+
+    if (!tk_pid->tk->eng->proj->wmark_set) {
+        if (set_swapcache_wmark(tk_pid, pid_str) != 0) {
+            etmemd_log(ETMEMD_LOG_ERR, "set_swapcache_wmark for pid %u fail\n", tk_pid->pid);
+            return -1;
+        }
+        tk_pid->tk->eng->proj->wmark_set = true;
+    }
+
+    fp = etmemd_get_proc_file(pid_str, COLD_PAGE, "r+");
+    if (fp == NULL) {
+        etmemd_log(ETMEMD_LOG_ERR, "get proc file %s fail.\n", COLD_PAGE);
+        return -1;
+    }
+
+    if (etmemd_send_ioctl_cmd(fp, &ioctl_para) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "etmemd_reclaim_swapcache fail\n");
+        fclose(fp);
+        return -1;
+    }
+
+    fclose(fp);
+    return 0;
+}
 
 int etmemd_grade_migrate(const char *pid, const struct memory_grade *memory_grade)
 {

@@ -30,12 +30,13 @@
 #include "etmemd_file.h"
 #include "etmemd_log.h"
 
-#define MAX_INTERVAL_VALUE  1200
-#define MAX_SLEEP_VALUE     1200
-#define MAX_LOOP_VALUE      120
+#define MAX_INTERVAL_VALUE              1200
+#define MAX_SLEEP_VALUE                 1200
+#define MAX_LOOP_VALUE                  120
+#define MAX_SYSMEM_THRESHOLD_VALUE      100
 
-#define MAX_OBJ_NAME_LEN    64
-#define MIN_NR_MIN_VAL      3
+#define MAX_OBJ_NAME_LEN                64
+#define MIN_NR_MIN_VAL                  3
 
 static SLIST_HEAD(project_list, project) g_projects = SLIST_HEAD_INITIALIZER(g_projects);
 
@@ -630,9 +631,72 @@ static int fill_project_scan_type(void *obj, void *val)
     return 0;
 }
 
+/* fill the project parameter: sysmem_threshold
+ * sysmem_threshold: [0, 100]. do not swap any memory out if system free memory is higher than sysmem_threshold */
+static int fill_project_sysmem_threshold(void *obj, void *val)
+{
+    struct project *proj = (struct project *)obj;
+    int sysmem_threshold = parse_to_int(val);
+
+    if (sysmem_threshold < 0 || sysmem_threshold > MAX_SYSMEM_THRESHOLD_VALUE) {
+        etmemd_log(ETMEMD_LOG_ERR, "invaild project sysmem_threshold value %d, it must between 0 and 100.\n",
+                   sysmem_threshold);
+        return -1;
+    }
+
+    proj->sysmem_threshold = sysmem_threshold;
+    return 0;
+}
+
+/* fill the project parameter: swapcache_low_wmark
+ * swapcache_low_wmark: [0, 100]. */
+static int fill_project_swapcache_low_wmark(void *obj, void *val)
+{
+    struct project *proj = (struct project *)obj;
+    int swapcache_low_wmark = parse_to_int(val);
+
+    if (swapcache_low_wmark < 0 || swapcache_low_wmark > MAX_SWAPCACHE_WMARK_VALUE) {
+        etmemd_log(ETMEMD_LOG_ERR, "invaild project swapcache_low_wmark value %d, it must between 0 and 100.\n",
+                   swapcache_low_wmark);
+        return -1;
+    }
+
+    proj->swapcache_low_wmark = swapcache_low_wmark;
+    return 0;
+}
+
+/* fill the project parameter: swapcache_high_wmark
+ * swapcache_high_wmark: (0, 100]. */
+static int fill_project_swapcache_high_wmark(void *obj, void *val)
+{
+    struct project *proj = (struct project *)obj;
+    int swapcache_high_wmark = parse_to_int(val);
+
+    if (swapcache_high_wmark < 0 || swapcache_high_wmark > MAX_SWAPCACHE_WMARK_VALUE) {
+        etmemd_log(ETMEMD_LOG_ERR, "invaild project swapcache_high_wmark value %d, it must between 0 and 100.\n",
+                   swapcache_high_wmark);
+        return -1;
+    }
+
+    proj->swapcache_high_wmark = swapcache_high_wmark;
+    return 0;
+}
+
+static bool check_swapcache_wmark_valid(struct project *proj)
+{
+    if (proj->swapcache_low_wmark > proj->swapcache_high_wmark) {
+        return false;
+    }
+
+    return true;
+}
+
 static struct config_item g_project_config_items[] = {
     {"name", STR_VAL, fill_project_name, false},
     {"scan_type", STR_VAL, fill_project_scan_type, false},
+    {"sysmem_threshold", INT_VAL, fill_project_sysmem_threshold, true},
+    {"swapcache_high_wmark", INT_VAL, fill_project_swapcache_high_wmark, true},
+    {"swapcache_low_wmark", INT_VAL, fill_project_swapcache_low_wmark, true},
 };
 
 static void clear_project(struct project *proj)
@@ -656,6 +720,11 @@ static int project_fill_by_conf(GKeyFile *config, struct project *proj)
         return -1;
     }
 
+    if (!check_swapcache_wmark_valid(proj)) {
+        etmemd_log(ETMEMD_LOG_ERR, "swapcache wmark is not valid, low wmark: %d, high wmark: %d",
+                    proj->swapcache_low_wmark, proj->swapcache_high_wmark);
+        return -1;
+    }
     return 0;
 }
 
@@ -688,6 +757,9 @@ enum opt_result etmemd_project_add(GKeyFile *config)
         etmemd_log(ETMEMD_LOG_ERR, "alloc memory for project fail\n");
         return OPT_INTER_ERR;
     }
+
+    proj->sysmem_threshold = -1;
+
     if (project_fill_by_conf(config, proj) != 0) {
         etmemd_log(ETMEMD_LOG_ERR, "fill project from configuration file fail\n");
         free(proj);

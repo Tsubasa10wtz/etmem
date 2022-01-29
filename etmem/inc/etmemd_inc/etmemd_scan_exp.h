@@ -25,6 +25,7 @@
 
 #define SCAN_AS_HUGE            0100000000      /* treat normal vm page as vm hugepage */
 #define SCAN_IGN_HOST           0200000000      /* ignore host access when scan vm */
+#define VMA_SCAN_FLAG           0x1000          /* scan the specifics vma with flag */
 
 enum {
     VMA_STAT_READ = 0,

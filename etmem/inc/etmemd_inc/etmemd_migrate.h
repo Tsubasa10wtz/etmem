@@ -27,5 +27,6 @@
 #define SWAP_ADDR_LEN   20
 
 int etmemd_grade_migrate(const char* pid, const struct memory_grade *memory_grade);
+int etmemd_reclaim_swapcache(const struct task_pid *tk_pid);
 unsigned long check_should_migrate(const struct task_pid *tk_pid);
 #endif

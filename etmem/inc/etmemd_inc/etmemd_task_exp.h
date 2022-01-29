@@ -29,6 +29,7 @@ struct task {
     char *value;
     char *name;
     int max_threads;
+    int swap_flag;
 
     struct task_pid *pids;
     struct engine *eng;

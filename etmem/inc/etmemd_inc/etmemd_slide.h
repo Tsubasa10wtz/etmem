@@ -22,7 +22,13 @@
 struct slide_params {
     struct task_executor *executor;
     int t;          /* watermark */
+    unsigned long swap_threshold;
     uint8_t dram_percent;
+};
+
+enum swap_type {
+    DONT_SWAP = 0,
+    DO_SWAP,
 };
 
 int fill_engine_type_slide(struct engine *eng, GKeyFile *config);

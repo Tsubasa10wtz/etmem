@@ -18,25 +18,38 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <sys/ioctl.h>
 
-#define PROC_PATH "/proc/"
-#define STATUS_FILE "/status"
-#define SWAPIN "SwapIN"
-#define VMRSS "VmRSS"
-#define VMSWAP "VmSwap"
-#define FILE_LINE_MAX_LEN 1024
-#define KEY_VALUE_MAX_LEN 64
-#define DECIMAL_RADIX 10
-#define ETMEMD_MAX_PARAMETER_NUM 6
-#define BYTE_TO_KB(s) ((s) >> 10)
-#define KB_TO_BYTE(s) ((s) << 10)
+#define PROC_PATH                       "/proc/"
+#define STATUS_FILE                     "/status"
+#define PROC_MEMINFO                    "meminfo"
+#define SWAPIN                          "SwapIN"
+#define VMRSS                           "VmRSS"
+#define VMSWAP                          "VmSwap"
 
-#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
+#define FILE_LINE_MAX_LEN               1024
+#define KEY_VALUE_MAX_LEN               64
+#define DECIMAL_RADIX                   10
+#define ETMEMD_MAX_PARAMETER_NUM        6
+
+#define BYTE_TO_KB(s)                   ((s) >> 10)
+#define KB_TO_BYTE(s)                   ((s) << 10)
+#define GB_TO_KB(s)                     ((s) << 20)
+
+#define MAX_SWAPCACHE_WMARK_VALUE       100
+
+#define ARRAY_SIZE(array)               (sizeof(array) / sizeof((array)[0]))
 
 /* in some system the max length of pid may be larger than 5, so we use 10 herr */
-#define PID_STR_MAX_LEN 10
+#define PID_STR_MAX_LEN                 10
+#define SWAP_THRESHOLD_MAX_LEN          10
 
-#define PIPE_FD_LEN 2
+#define PIPE_FD_LEN                     2
+
+struct ioctl_para {
+    unsigned long ioctl_cmd;
+    unsigned int ioctl_parameter;
+};
 
 /*
  * function: parse cmdline passed to etmemd server.
@@ -57,12 +70,15 @@ int get_unsigned_int_value(const char *val, unsigned int *value);
 int get_unsigned_long_value(const char *val, unsigned long *value);
 void etmemd_safe_free(void **ptr);
 
-FILE *etmemd_get_proc_file(const char *pid, const char *file, int flags, const char *mode);
+FILE *etmemd_get_proc_file(const char *pid, const char *file, const char *mode);
+int etmemd_send_ioctl_cmd(FILE *fp, struct ioctl_para *request);
 
 int get_keyword_and_value(const char *str, char *key, char *val);
 unsigned long get_pagesize(void);
 int get_mem_from_proc_file(const char *pid, const char *file_name, unsigned long *data, const char *cmpstr);
 
 int dprintf_all(int fd, const char *format, ...);
+
+int get_swap_threshold_inKB(const char *string, unsigned long *value);
 
 #endif

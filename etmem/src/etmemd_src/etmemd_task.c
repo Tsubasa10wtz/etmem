@@ -470,10 +470,33 @@ static int fill_task_threads(void *obj, void *val)
     return 0;
 }
 
+static int fill_task_swap_flag(void *obj, void *val)
+{
+    struct task *tk = (struct task *)obj;
+    char *swap_flag = (char *)val;
+
+    if (strcmp(swap_flag, "yes") == 0) {
+        tk->swap_flag = 1;
+        free(val);
+        return 0;
+    }
+
+    if (strcmp(swap_flag, "no") == 0) {
+        tk->swap_flag = 0;
+        free(val);
+        return 0;
+    }
+
+    free(val);
+    etmemd_log(ETMEMD_LOG_ERR, "swap_flag para is not valid.\n");
+    return -1;
+}
+
 struct config_item g_task_config_items[] = {
     {"name", STR_VAL, fill_task_name, false},
     {"type", STR_VAL, fill_task_type, false},
     {"value", STR_VAL, fill_task_value, false},
+    {"swap_flag", STR_VAL, fill_task_swap_flag, true},
     {"max_threads", INT_VAL, fill_task_threads, true},
 };
 
