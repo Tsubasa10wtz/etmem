@@ -115,7 +115,7 @@ static bool check_should_reclaim_swapcache(const struct task_pid *tk_pid)
     unsigned long swapcache_total;
     int ret;
 
-    if (proj->swapcache_high_wmark == 0) {
+    if (proj->swapcache_high_wmark == -1 || proj->swapcache_low_wmark == -1) {
         return false;
     }
 
