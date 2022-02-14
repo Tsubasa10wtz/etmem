@@ -649,13 +649,13 @@ static int fill_project_sysmem_threshold(void *obj, void *val)
 }
 
 /* fill the project parameter: swapcache_low_wmark
- * swapcache_low_wmark: [0, 100]. */
+ * swapcache_low_wmark: (0, 100]. */
 static int fill_project_swapcache_low_wmark(void *obj, void *val)
 {
     struct project *proj = (struct project *)obj;
     int swapcache_low_wmark = parse_to_int(val);
 
-    if (swapcache_low_wmark < 0 || swapcache_low_wmark > MAX_SWAPCACHE_WMARK_VALUE) {
+    if (swapcache_low_wmark <= 0 || swapcache_low_wmark > MAX_SWAPCACHE_WMARK_VALUE) {
         etmemd_log(ETMEMD_LOG_ERR, "invaild project swapcache_low_wmark value %d, it must between 0 and 100.\n",
                    swapcache_low_wmark);
         return -1;
@@ -672,7 +672,7 @@ static int fill_project_swapcache_high_wmark(void *obj, void *val)
     struct project *proj = (struct project *)obj;
     int swapcache_high_wmark = parse_to_int(val);
 
-    if (swapcache_high_wmark < 0 || swapcache_high_wmark > MAX_SWAPCACHE_WMARK_VALUE) {
+    if (swapcache_high_wmark <= 0 || swapcache_high_wmark > MAX_SWAPCACHE_WMARK_VALUE) {
         etmemd_log(ETMEMD_LOG_ERR, "invaild project swapcache_high_wmark value %d, it must between 0 and 100.\n",
                    swapcache_high_wmark);
         return -1;
@@ -684,11 +684,17 @@ static int fill_project_swapcache_high_wmark(void *obj, void *val)
 
 static bool check_swapcache_wmark_valid(struct project *proj)
 {
-    if (proj->swapcache_low_wmark > proj->swapcache_high_wmark) {
-        return false;
+    if (proj->swapcache_high_wmark == -1 && proj->swapcache_low_wmark == -1) {
+        return true;
     }
 
-    return true;
+    if ((proj->swapcache_high_wmark > 0) &&
+        (proj->swapcache_low_wmark > 0) &&
+        (proj->swapcache_high_wmark > proj->swapcache_low_wmark)) {
+        return true;
+    }
+
+    return false;
 }
 
 static struct config_item g_project_config_items[] = {
@@ -759,6 +765,8 @@ enum opt_result etmemd_project_add(GKeyFile *config)
     }
 
     proj->sysmem_threshold = -1;
+    proj->swapcache_high_wmark = -1;
+    proj->swapcache_low_wmark = -1;
 
     if (project_fill_by_conf(config, proj) != 0) {
         etmemd_log(ETMEMD_LOG_ERR, "fill project from configuration file fail\n");
