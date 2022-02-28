@@ -29,6 +29,30 @@ etmem内存分级扩展技术，通过DRAM+内存压缩/高性能存储新介质
     $ make
 
 
+## 注意事项
+### 运行依赖
+etmem作为内存扩展工具，需要依赖于内核态的特性支持，为了可以识别内存访问情况和支持主动将内存写入swap分区来达到内存垂直扩展的需求，etmem在运行时需要插入etmem_scan和etmem_swap模块：
+
+```
+modprobe etmem_scan
+modprobe etmem_swap
+```
+openuler21.03、21.09、20.03 LTS SP2以及20.03 LTS SP3均支持etmem内存扩展相关特性，可以直接使用以上内核。
+
+### 权限限制
+运行etmem进程需要root权限，root用户具有系统最高权限，在使用root用户进行操作时，请严格按照操作指导进行操作，避免其他操作造成系统管理及安全风险。
+
+### 使用约束
+
+- etmem的客户端和服务端需要在同一个服务器上部署，不支持跨服务器通信的场景。
+- etmem仅支持扫描进程名小于或等于15个字符长度的目标进程。
+- 在使用AEP介质进行内存扩展的时候，依赖于系统可以正确识别AEP设备并将AEP设备初始化为numa node。并且配置文件中的vm_flags字段只能配置为ht。
+- 引擎私有命令仅针对对应引擎和引擎下的任务有效，比如cslide所支持的showhostpages和showtaskpages。
+- 第三方策略实现代码中，eng_mgt_func接口中的fd不能写入0xff和0xfe字。
+- 支持在一个工程内添加多个不同的第三方策略动态库，以配置文件中的eng_name来区分。
+- 禁止并发扫描同一个进程。未加载etmem_scan和etmem_swap ko时，禁止使用/proc/xxx/idle_pages和/proc/xxx/swap_pages文件
+
+
 ## 使用说明
 
 ### 启动etmemd进程
@@ -63,7 +87,14 @@ options：
 
 在运行etmem进程之前，需要管理员预先规划哪些进程需要做内存扩展，将进程信息配置到etmem配置文件中，并配置内存扫描的周期、扫描次数、内存冷热阈值等信息。
 
-配置文件的示例文件在源码包中，放置在源码根目录的conf/example_conf.yaml，建议在使用时放置在/etc/etmem/目录下，示例内容为：
+配置文件的示例文件在源码包中，放置在/etc/etmem文件路径下，按照功能划分为3个示例文件，
+
+```
+/etc/etmem/cslide_conf.yaml
+/etc/etmem/slide_conf.yaml
+/etc/etmem/thirdparty_conf.yaml
+```
+示例内容分别为：
 
 ```
 [project]
@@ -132,6 +163,9 @@ task_private_key=task_private_value
 | loop      | 内存扫描的循环次数           | 是    | 是     | 1~10       | loop=3 //扫描3次                                                   |
 | interval  | 每次内存扫描的时间间隔         | 是    | 是     | 1~1200     | interval=5 //每次扫描之间间隔5s                                         |
 | sleep     | 每个内存扫描+操作的大周期之间时间间隔 | 是    | 是     | 1~1200     | sleep=10 //每次大周期之间间隔10s                                         |
+| sysmem_threshold| slide engine的配置项，系统内存换出阈值 | 否    | 是     | 0~100     | sysmem_threshold=50 //系统内存剩余量小于50%时，etmem才会触发内存换出|
+| swapcache_high_wmark| slide engine的配置项，swacache可以占用系统内存的比例，高水线 | 否    | 是     | 1~100     | swapcache_high_wmark=5 //swapcache内存占用量可以为系统内存的5%，超过该比例，etmem会触发swapcache回收<br> 注： swapcache_high_wmark需要大于swapcache_low_wmark|
+| swapcache_low_wmark| slide engine的配置项，swacache可以占用系统内存的比例，低水线 | 否    | 是     | [1~swapcache_high_wmark)     | swapcache_low_wmark=3 //触发swapcache回收后，系统会将swapcache内存占用量回收到低于3%|
 | [engine]      | engine公用配置段起始标识                           | 否                  | 否     | NA                                               | engine参数的开头标识，表示下面的参数直到另外的[xxx]或文件结尾为止的范围内均为engine section的参数 |
 | project       | 声明所在的project                              | 是                  | 是     | 64个字以内的字符串                                       | 已经存在名字为test的project，则可以写为project=test                        |
 | engine        | 声明所在的engine                               | 是                  | 是     | slide/cslide/thridparty                          | 声明使用的是slide或cslide或thirdparty策略                              |
@@ -155,7 +189,8 @@ task_private_key=task_private_value
 | anon_only        | engine为cslide的task配置项，标识是否只扫描匿名页                               | 否                 | 是 | yes/no               | anon_only=no //配置为yes时只扫描匿名页，配置为no时非匿名页也会扫描                     |
 | ign_host         | engine为cslide的task配置项，标识是否忽略host上的页表扫描信息                       | 否                 | 是 | yes/no               | ign_host=no //yes为忽略，no为不忽略                                     |
 | task_private_key | engine为thirdparty的task配置项，预留给第三方策略的task解析私有参数的配置项，选配           | 否                 | 否 | 根据第三方策略私有参数自行限制      | 根据第三方策略私有task参数自行配置                                             |
-
+| swap_threshold |slide engine的配置项，进程内存换出阈值           | 否                 | 是 | 进程可用内存绝对值      | swap_threshold=10g //进程占用内存在低于10g时不会触发换出。<br>当前版本下，仅支持g/G作为内存绝对值单位。与sysmem_threshold配合使用，仅系统内存低于阈值时，进行白名单中进程阈值判断 |
+| swap_flag|slide engine的配置项，进程指定内存换出           | 否                 | 是 | yes/no      | swap_flag=yes//使能进程指定内存换出 |
 
 
 ### etmem project/engine/task对象的创建和删除
@@ -172,11 +207,11 @@ task_private_key=task_private_value
 
 添加对象：
 
-etmem obj add -f /etc/example_config.yaml -s etmemd_socket
+etmem obj add -f /etc/etmem/slide_conf.yaml -s etmemd_socket
 
 删除对象：
 
-etmem obj del -f /etc/example_config.yaml -s etmemd_socket
+etmem obj del -f /etc/etmem/slide_conf.yaml -s etmemd_socket
 
 打印帮助：
 
