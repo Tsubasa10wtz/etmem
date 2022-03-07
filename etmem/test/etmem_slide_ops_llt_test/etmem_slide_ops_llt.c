@@ -275,9 +275,6 @@ static void test_etmem_task_swap_flag_error(void)
     CU_ASSERT_EQUAL(etmemd_project_remove_task(config), OPT_SUCCESS);
     destroy_slide_task_config(config);
 
-    /* run slide_policy_interface fail */
-    CU_ASSERT_EQUAL(slide_policy_interface(NULL, NULL), NULL);
-
     /* run slide_do_migrate fail */
     CU_ASSERT_EQUAL(slide_do_migrate(1, NULL), -1);
 
@@ -354,9 +351,6 @@ static void test_etmem_task_swap_threshold_error(void)
     sleep(10);
     CU_ASSERT_EQUAL(etmemd_project_remove_task(config), OPT_SUCCESS);
     destroy_slide_task_config(config);
-
-    /* run slide_policy_interface fail */
-    CU_ASSERT_EQUAL(slide_policy_interface(NULL, NULL), NULL);
 
     /* run slide_do_migrate fail */
     CU_ASSERT_EQUAL(slide_do_migrate(1, NULL), -1);
@@ -556,9 +550,6 @@ static void test_task_slide_invalid_config(void)
     sleep(10);
     CU_ASSERT_EQUAL(etmemd_project_remove_task(config), OPT_SUCCESS);
     destroy_slide_task_config(config);
-
-    /* run slide_policy_interface fail */
-    CU_ASSERT_EQUAL(slide_policy_interface(NULL, NULL), NULL);
 
     /* run slide_do_migrate fail */
     CU_ASSERT_EQUAL(slide_do_migrate(1, NULL), -1);

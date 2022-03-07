@@ -21,6 +21,7 @@
 #include "etmemd_project.h"
 
 #define CONFIG_NAME                         "name=%s\n"
+#define CONFIG_SCAN_TYPE                    "scan_type=%s\n"
 #define CONFIG_INTERVAL                     "interval=%s\n"
 #define CONFIG_LOOP                         "loop=%s\n"
 #define CONFIG_SLEEP                        "sleep=%s\n"

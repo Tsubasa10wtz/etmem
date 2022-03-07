@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <string.h>
 
+#include "test_common.h"
 #include "etmemd_thirdparty_export.h"
 
 char *get_private_value(GKeyFile *config, char *group, char *key)

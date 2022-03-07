@@ -51,6 +51,7 @@ void construct_proj_file(struct proj_test_param *param)
     file = fopen(param->file_name, "w+");
     CU_ASSERT_PTR_NOT_NULL(file);
     CU_ASSERT_NOT_EQUAL(fprintf(file, "[project]\n"), -1);
+    CU_ASSERT_NOT_EQUAL(fprintf(file, CONFIG_SCAN_TYPE, "page"), -1);
     if (param->proj_name != NULL) {
         CU_ASSERT_NOT_EQUAL(fprintf(file, CONFIG_NAME, param->proj_name), -1);
     }

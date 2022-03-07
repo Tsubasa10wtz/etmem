@@ -42,12 +42,18 @@ static struct task *alloc_tk(int loop, int sleep)
     struct task *tk = NULL;
     struct project *proj = NULL;
     struct engine *eng = NULL;
+    struct page_scan *page_scan = NULL;
+
+    page_scan = (struct page_scan *)calloc(1, sizeof(struct page_scan));
+    CU_ASSERT_PTR_NOT_NULL(page_scan);
 
     proj = (struct project *)calloc(1, sizeof(struct project));
     CU_ASSERT_PTR_NOT_NULL(proj);
 
-    proj->loop = loop;
-    proj->sleep = sleep;
+    proj->scan_param = page_scan;
+    proj->type = PAGE_SCAN;
+    page_scan->loop = loop;
+    page_scan->sleep = sleep;
 
     tk = (struct task *)calloc(1, sizeof(struct task));
     CU_ASSERT_PTR_NOT_NULL(tk);
@@ -272,6 +278,9 @@ static void test_scan_error(void)
     CU_ASSERT_PTR_NULL(etmemd_do_scan(tpid, NULL));
     CU_ASSERT_PTR_NULL(etmemd_do_scan(tpid, tk));
 
+    free(tk->eng->proj->scan_param);
+    free(tk->eng->proj);
+    free(tk->eng);
     free(tk);
     free(tpid);
 }
@@ -292,6 +301,9 @@ static void test_etmem_scan_ok(void)
 
     page_refs = etmemd_do_scan(tpid, tk);
     CU_ASSERT_PTR_NOT_NULL(page_refs);
+    free(tk->eng->proj->scan_param);
+    free(tk->eng->proj);
+    free(tk->eng);
     free(tk);
     free(tpid);
     clean_page_refs_unexpected(&page_refs);

@@ -60,6 +60,7 @@ set(ETMEMD_CSLIDE_DEP
  ${ETMEMD_SRC_DIR}/etmemd_log.c
  ${ETMEMD_SRC_DIR}/etmemd_project.c
  ${ETMEMD_SRC_DIR}/etmemd_engine.c
+ ${ETMEMD_SRC_DIR}/etmemd_memdcd.c
  ${ETMEMD_SRC_DIR}/etmemd_slide.c
  ${ETMEMD_SRC_DIR}/etmemd_thirdparty.c
  ${ETMEMD_SRC_DIR}/etmemd_task.c
@@ -67,7 +68,8 @@ set(ETMEMD_CSLIDE_DEP
  ${ETMEMD_SRC_DIR}/etmemd_threadpool.c
  ${ETMEMD_SRC_DIR}/etmemd_threadtimer.c
  ${ETMEMD_SRC_DIR}/etmemd_pool_adapter.c
- ${ETMEMD_SRC_DIR}/etmemd_migrate.c)
+ ${ETMEMD_SRC_DIR}/etmemd_migrate.c
+ ${ETMEMD_SRC_DIR}/etmemd_damon.c)
 
 set(TEST_COMMON_SRC
  ${TEST_COMMON_DIR}/test_common.c)

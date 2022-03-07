@@ -23,4 +23,4 @@ SET(EXE etmem_threadpool_ops_llt)
 
 add_executable(${EXE} etmem_threadpool_ops_llt.c)
 
-target_link_libraries(${EXE} cunit ${BUILD_DIR}/lib/libetmemd.so pthread dl rt libboundscheck numa ${GLIB2_LIBRARIES})
+target_link_libraries(${EXE} cunit ${BUILD_DIR}/lib/libetmemd.so pthread dl rt boundscheck numa ${GLIB2_LIBRARIES})

@@ -57,7 +57,7 @@ int main(int argc, char **argv)
 
     if (argc > 3) {
         dst_node = atoi(argv[1]);
-        len = (long long)atoi(argv[2] << BYTE_TO_MB_SHIFT);
+        len = (long long)atoi(argv[2]) << BYTE_TO_MB_SHIFT;
         is_busy = atoi(argv[3]);
     } else {
         printf("%s node size(MB) is busy\n", argv[0]);

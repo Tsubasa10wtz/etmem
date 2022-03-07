@@ -138,11 +138,11 @@ static void test_parse_cmdline_ok(void)
     char *cmd_ok[] = {"./etmemd", "-l", "0", "-s", "cmd_ok"};
     char *cmd_only_sock[] = {"./etmemd", "-s", "cmd_only_sock"};
 
-    CU_ASSERT_EQUAL(etmemd_parse_cmdline(sizeof(cmd) / sizeof(cmd[0]), cmd, &is_help), 0);
+    CU_ASSERT_EQUAL(etmemd_parse_cmdline(sizeof(cmd_ok) / sizeof(cmd_ok[0]), cmd_ok, &is_help), 0);
     etmemd_sock_name_free();
     clean_flags(&is_help);
 
-    CU_ASSERT_EQUAL(etmemd_parse_cmdline(sizeof(cmd_ok) / sizeof(cmd_ok[0]), cmd_ok, &is_help), 0);
+    CU_ASSERT_EQUAL(etmemd_parse_cmdline(sizeof(cmd) / sizeof(cmd[0]), cmd, &is_help), 0);
     clean_flags(&is_help);
 
     CU_ASSERT_EQUAL(etmemd_parse_cmdline(sizeof(cmd_h) / sizeof(cmd_h[0]), cmd_h, &is_help), 0);

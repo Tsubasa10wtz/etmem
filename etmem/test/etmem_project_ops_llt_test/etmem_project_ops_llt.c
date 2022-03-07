@@ -417,7 +417,7 @@ static void add_project_once(void)
     etmem_pro_add_swapcache_mark_ok();
     init_proj_param(&param);
 
-    CU_ASSERT_EQUAL(etmemd_project_show(NULL, 0), OPT_PRO_NOEXIST);
+    CU_ASSERT_EQUAL(etmemd_project_show(NULL, 0), OPT_SUCCESS);
 
     config = construct_proj_config(&param);
     CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_SUCCESS);
@@ -429,7 +429,7 @@ static void add_project_once(void)
     CU_ASSERT_EQUAL(etmemd_project_remove(config), OPT_SUCCESS);
     destroy_proj_config(config);
 
-    CU_ASSERT_EQUAL(etmemd_project_show("noexist", 0), OPT_PRO_NOEXIST);
+    CU_ASSERT_EQUAL(etmemd_project_show("noexist", 0), OPT_SUCCESS);
 }
 
 static int add_project_multiple(int proj_add_num)

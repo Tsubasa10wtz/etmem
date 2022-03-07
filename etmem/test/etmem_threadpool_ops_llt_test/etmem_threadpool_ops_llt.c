@@ -147,7 +147,13 @@ static void test_thpool_addwk_mul(void)
 
 static void init_thpool_objs(struct project *proj, struct engine *eng, struct task *tk)
 {
-    proj->interval = 1;
+    struct page_scan *page_scan = (struct page_scan *)calloc(1, sizeof(struct page_scan));
+    CU_ASSERT_PTR_NOT_NULL(page_scan);
+    proj->scan_param = page_scan;
+    proj->type = PAGE_SCAN;
+    page_scan->interval = 1;
+    page_scan->loop = 1;
+    page_scan->sleep = 1;
     proj->start = true;
     proj->name = "test_project";
     eng->proj = proj;
@@ -170,6 +176,7 @@ static void test_thpool_start_error(void)
     g_test_exec.tk = &tk;
 
     CU_ASSERT_EQUAL(start_threadpool_work(&g_test_exec), -1);
+    free(proj.scan_param);
 }
 
 static void *task_executor(void *arg)
@@ -193,6 +200,7 @@ static void test_thpool_start_stop(void)
     /* wait threadpool to work */
     sleep(2);
     stop_and_delete_threadpool_work(&tk);
+    free(proj.scan_param);
 }
 
 typedef enum {

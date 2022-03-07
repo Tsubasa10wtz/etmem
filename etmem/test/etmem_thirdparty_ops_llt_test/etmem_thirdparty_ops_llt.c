@@ -160,11 +160,11 @@ void test_etmem_user_engine_0001(void)
 
     /* test param NULL */
     CU_ASSERT_EQUAL(etmemd_project_mgt_engine(NULL, NULL, 
-                                              NULL, DEFAULT_TASK, 0), OPT_SUCCESS);
+                                              NULL, DEFAULT_TASK, 0), OPT_INVAL);
     CU_ASSERT_EQUAL(etmemd_project_mgt_engine(DEFAULT_PROJ, "no_exist_engine", 
-                                              "my_cmd", DEFAULT_TASK, 0), OPT_SUCCESS);
+                                              "my_cmd", DEFAULT_TASK, 0), OPT_ENG_NOEXIST);
     CU_ASSERT_EQUAL(etmemd_project_mgt_engine(DEFAULT_PROJ, "my_engine", 
-                                              "my_cmd", "no_exist_task", 0), OPT_SUCCESS);
+                                              "my_cmd", "no_exist_task", 0), OPT_TASK_NOEXIST);
 
     CU_ASSERT_EQUAL(etmemd_migrate_stop(DEFAULT_PROJ), OPT_SUCCESS);
 
@@ -219,7 +219,7 @@ static void test_etmem_user_engine_null(void)
     CU_ASSERT_EQUAL(etmemd_project_add_engine(eng_config), OPT_SUCCESS);
     CU_ASSERT_EQUAL(etmemd_project_add_task(task_config), OPT_SUCCESS);
     CU_ASSERT_EQUAL(etmemd_migrate_start(DEFAULT_PROJ), OPT_SUCCESS);
-    CU_ASSERT_EQUAL(etmemd_project_mgt_engine(DEFAULT_PROJ, "my_engine", 
+    CU_ASSERT_NOT_EQUAL(etmemd_project_mgt_engine(DEFAULT_PROJ, "my_engine", 
                                               "my_cmd", DEFAULT_TASK, 0), OPT_SUCCESS);
     CU_ASSERT_EQUAL(etmemd_migrate_stop(DEFAULT_PROJ), OPT_SUCCESS);
 

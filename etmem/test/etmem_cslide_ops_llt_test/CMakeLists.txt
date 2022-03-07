@@ -26,5 +26,5 @@ SET(EXE etmem_cslide_ops_llt)
 add_executable(${EXE} etmem_cslide_ops_llt.c)
 add_executable(mem_access mem_access.c)
 
-target_link_libraries(${EXE} cunit ${BUILD_DIR}/lib/libcslide.so ${BUILD_DIR}/lib/libtest.so pthread dl rt boundscheck numa ${GLIB2_LIBRARIES})
+target_link_libraries(${EXE} cunit ${BUILD_DIR}/lib/libcslide_dep.so ${BUILD_DIR}/lib/libtest.so pthread dl rt boundscheck numa ${GLIB2_LIBRARIES})
 target_link_libraries(mem_access numa)
