@@ -30,6 +30,46 @@
 #include "etmemd_common.h"
 #include "etmemd_engine.h"
 #include "etmemd_rpc.h"
+#include "etmemd_scan_exp.h"
+#include "etmemd_scan.h"
+#include "securec.h"
+
+#define RECLAIM_SWAPCACHE_MAGIC      0X77
+#define RECLAIM_SWAPCACHE_ON         _IOW(RECLAIM_SWAPCACHE_MAGIC, 0x1, unsigned int)
+#define SET_SWAPCACHE_WMARK          _IOW(RECLAIM_SWAPCACHE_MAGIC, 0x2, unsigned int)
+
+static FILE *open_conf_file(const char *file_name)
+{
+    FILE *file = NULL;
+    char path[PATH_MAX] = {0};
+    struct stat info;
+    int r;
+    int fd;
+
+    if (realpath(file_name, path) == NULL) {
+        return NULL;
+    }
+
+    fd = open(path, O_RDONLY);
+    if (fd == -1) {
+        return NULL;
+    }
+
+    r = fstat(fd, &info);
+    if (r == -1) {
+        close(fd);
+        return NULL;
+    }
+
+    if (S_ISDIR(info.st_mode)) {
+        close(fd);
+        return NULL;
+    }
+
+    file = fdopen(fd, "r");
+
+    return file;
+}
 
 static void clean_flags(bool *ishelp)
 {
@@ -98,11 +138,11 @@ static void test_parse_cmdline_ok(void)
     char *cmd_ok[] = {"./etmemd", "-l", "0", "-s", "cmd_ok"};
     char *cmd_only_sock[] = {"./etmemd", "-s", "cmd_only_sock"};
 
-    CU_ASSERT_EQUAL(etmemd_parse_cmdline(sizeof(cmd) / sizeof(cmd[0]), cmd, &is_help), 0);
+    CU_ASSERT_EQUAL(etmemd_parse_cmdline(sizeof(cmd_ok) / sizeof(cmd_ok[0]), cmd_ok, &is_help), 0);
     etmemd_sock_name_free();
     clean_flags(&is_help);
 
-    CU_ASSERT_EQUAL(etmemd_parse_cmdline(sizeof(cmd_ok) / sizeof(cmd_ok[0]), cmd_ok, &is_help), 0);
+    CU_ASSERT_EQUAL(etmemd_parse_cmdline(sizeof(cmd) / sizeof(cmd[0]), cmd, &is_help), 0);
     clean_flags(&is_help);
 
     CU_ASSERT_EQUAL(etmemd_parse_cmdline(sizeof(cmd_h) / sizeof(cmd_h[0]), cmd_h, &is_help), 0);
@@ -164,20 +204,136 @@ static void test_get_uint_value_ok(void)
     CU_ASSERT_EQUAL(value, UINT_MAX);
 }
 
+static void test_get_ulong_value_error(void)
+{
+    unsigned long value;
+
+    CU_ASSERT_EQUAL(get_unsigned_long_value("a1", &value), -1);
+}
+
+static void test_get_ulong_value_ok(void)
+{
+    unsigned long value;
+    char ulong_max[100] = {0};
+    char ulong_max_dec_one[100] = {0};
+    if (snprintf_s(ulong_max, 100, 99, "%d", ULONG_MAX) == -1) {
+        printf("error: get unsign long max string failed\n");
+        return;
+    }
+
+    if (snprintf_s(ulong_max_dec_one, 100, 99, "%d", ULONG_MAX - 1) == -1) {
+        printf("error: get unsign long max - 1 string failed\n");
+        return;
+    }
+
+    CU_ASSERT_EQUAL(get_unsigned_long_value("0", &value), 0);
+    CU_ASSERT_EQUAL(value, 0);
+    CU_ASSERT_EQUAL(get_unsigned_long_value("1", &value), 0);
+    CU_ASSERT_EQUAL(value, 1);
+    CU_ASSERT_EQUAL(get_unsigned_long_value(ulong_max_dec_one, &value), 0);
+    CU_ASSERT_EQUAL(value, ULONG_MAX - 1);
+    CU_ASSERT_EQUAL(get_unsigned_long_value(ulong_max, &value), 0);
+    CU_ASSERT_EQUAL(value, ULONG_MAX);
+}
+
 static void test_get_proc_file_error(void)
 {
-    CU_ASSERT_PTR_NULL(etmemd_get_proc_file("0", "/maps", 0, "r"));
-    CU_ASSERT_PTR_NULL(etmemd_get_proc_file("1", "maps", 0, "r"));
-    CU_ASSERT_PTR_NULL(etmemd_get_proc_file("1", "/map", 0, "r"));
+    CU_ASSERT_PTR_NULL(etmemd_get_proc_file("0", "/maps", "r"));
+    CU_ASSERT_PTR_NULL(etmemd_get_proc_file("1", "maps", "r"));
+    CU_ASSERT_PTR_NULL(etmemd_get_proc_file("1", "/map", "r"));
 }
 
 static void test_get_proc_file_ok(void)
 {
     FILE *fp = NULL;
 
-    fp = etmemd_get_proc_file("1", "/maps", 0, "r");
+    fp = etmemd_get_proc_file("1", "/maps", "r");
 
     CU_ASSERT_EQUAL(fclose(fp), 0);
+}
+
+static void test_get_mem_from_proc_file_error(void)
+{
+    unsigned long data = 0;
+
+    CU_ASSERT_EQUAL(get_mem_from_proc_file(NULL, "status", &data, "VmRSS"), -1);
+    CU_ASSERT_EQUAL(get_mem_from_proc_file("1", NULL, &data, "VmRSS"), -1);
+    CU_ASSERT_EQUAL(get_mem_from_proc_file(NULL, NULL, &data, "VmRSS"), -1);
+    CU_ASSERT_EQUAL(get_mem_from_proc_file("1", "status", &data, "VmTTTT"), -1);
+}
+
+static void test_get_mem_from_proc_file_ok(void)
+{
+    unsigned long data = 0;
+
+    CU_ASSERT_EQUAL(get_mem_from_proc_file("1", "/status", &data, "VmRSS"), 0);
+}
+
+static void test_get_swap_threshold_inKB_error(void)
+{
+    char *swap_threshold = "50m";
+    char *swap_threshold_too_long = "12345678900m";
+    unsigned long value = 0;
+
+    CU_ASSERT_EQUAL(get_swap_threshold_inKB(NULL, &value), -1);
+    CU_ASSERT_EQUAL(get_swap_threshold_inKB(swap_threshold, &value), -1);
+    CU_ASSERT_EQUAL(get_swap_threshold_inKB(swap_threshold_too_long, &value), -1);
+}
+
+static void test_get_swap_threshold_inKB_ok(void)
+{
+    char *swap_threshold = "50g";
+    char *swap_threshold_G = "50G";
+    unsigned long value = 0;
+
+    CU_ASSERT_EQUAL(get_swap_threshold_inKB(swap_threshold, &value), 0);
+    CU_ASSERT_EQUAL(get_swap_threshold_inKB(swap_threshold_G, &value), 0);
+}
+
+static void test_etmemd_send_ioctl_cmd_error(void)
+{
+    struct ioctl_para ioctl_para_test = {
+        .ioctl_cmd = VMA_SCAN_ADD_FLAGS,
+        .ioctl_parameter = VMA_SCAN_FLAG,
+    };
+    FILE *fp = NULL;
+
+    fp = etmemd_get_proc_file("1", "/swap_pages", "r+");
+    if (fp == NULL) {
+        printf("get proc file swap_pages failed.\n");
+        return;
+    }
+
+    CU_ASSERT_EQUAL(etmemd_send_ioctl_cmd(NULL, NULL), -1);
+    CU_ASSERT_EQUAL(etmemd_send_ioctl_cmd(NULL, &ioctl_para_test), -1);
+    CU_ASSERT_EQUAL(etmemd_send_ioctl_cmd(fp, NULL), -1);
+    fclose(fp);
+
+    fp = etmemd_get_proc_file("1", STATUS_FILE, "r+");
+    if (fp == NULL) {
+        printf("get proc file status failed.\n");
+        return;
+    }
+    CU_ASSERT_EQUAL(etmemd_send_ioctl_cmd(fp, &ioctl_para_test), -1);
+    fclose(fp);
+}
+
+static void test_etmemd_send_ioctl_cmd_ok(void)
+{
+    struct ioctl_para ioctl_para_test = {
+        .ioctl_cmd = SET_SWAPCACHE_WMARK,
+        .ioctl_parameter = 0,
+    };
+    FILE *fp = NULL;
+
+    fp = etmemd_get_proc_file("1", "/swap_pages", "r+");
+    if (fp == NULL) {
+        printf("get proc file swap_pages failed.\n");
+        return;
+    }
+
+    CU_ASSERT_EQUAL(etmemd_send_ioctl_cmd(fp, &ioctl_para_test), 0);
+    fclose(fp);
 }
 
 static void test_get_key_value_error(void)
@@ -276,12 +432,20 @@ int main(int argc, const char **argv)
         CU_ADD_TEST(suite, test_get_int_value_ok) == NULL ||
         CU_ADD_TEST(suite, test_get_uint_value_error) == NULL ||
         CU_ADD_TEST(suite, test_get_uint_value_ok) == NULL ||
+        CU_ADD_TEST(suite, test_get_ulong_value_error) == NULL ||
+        CU_ADD_TEST(suite, test_get_ulong_value_ok) == NULL ||
         CU_ADD_TEST(suite, test_get_key_value_error) == NULL ||
         CU_ADD_TEST(suite, test_get_key_value_ok) == NULL ||
         CU_ADD_TEST(suite, test_parse_cmdline_error) == NULL ||
         CU_ADD_TEST(suite, test_parse_cmdline_ok) == NULL ||
         CU_ADD_TEST(suite, test_get_proc_file_error) == NULL ||
         CU_ADD_TEST(suite, test_get_proc_file_ok) == NULL ||
+        CU_ADD_TEST(suite, test_get_mem_from_proc_file_error) == NULL ||
+        CU_ADD_TEST(suite, test_get_mem_from_proc_file_ok) == NULL ||
+        CU_ADD_TEST(suite, test_get_swap_threshold_inKB_error) == NULL ||
+        CU_ADD_TEST(suite, test_get_swap_threshold_inKB_ok) == NULL ||
+        CU_ADD_TEST(suite, test_etmemd_send_ioctl_cmd_error) == NULL ||
+        CU_ADD_TEST(suite, test_etmemd_send_ioctl_cmd_ok) == NULL ||
         CU_ADD_TEST(suite, test_etmem_systemd_service_0001) == NULL) {
             printf("CU_ADD_TEST fail. \n");
             goto ERROR;

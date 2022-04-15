@@ -8,9 +8,9 @@
  * IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR
  * PURPOSE.
  * See the Mulan PSL v2 for more details.
- * Author: shikemeng
+ * Author: yangkunlin
  * Create: 2021-11-30
- * Description: test for export scan
+ * Description: test for the export scan library
  ******************************************************************************/
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,59 +20,36 @@
 #include <CUnit/Automated.h>
 #include <CUnit/Console.h>
 
-#include "etmemd_scan.h"
-#include "etmemd_project.h"
-#include "etmemd_engine.h"
+#include "etmemd_scan_export.h"
 
-static struct task_pid *alloc_tkpid(unsigned int pid, struct task *tk)
+/* normal init and exit */
+static void test_etmem_exp_scan_001(void)
 {
-    struct task_pid *tpid = NULL;
+    /* for test of exit without init*/
+    etmemd_scan_exit();
 
-    tpid = (struct task_pid *)calloc(1, sizeof(struct task_pid));
-    CU_ASSERT_PTR_NOT_NULL(tpid);
-    tpid->pid = pid;
-    tpid->tk = tk;
-
-    return tpid;
+    CU_ASSERT_EQUAL(etmemd_scan_init(), 0);
+    etmemd_scan_exit();
 }
 
-
-static struct task *alloc_tk(int loop, int sleep)
+static void test_etmem_exp_scan_002(void)
 {
-    struct task *tk = NULL;
-    struct project *proj = NULL;
-    struct engine *eng = NULL;
-    struct page_scan *page_scan = NULL;
+    /* for test of exit without init*/
+    etmemd_scan_exit();
 
-    page_scan = (struct page_scan *)calloc(1, sizeof(struct page_scan));
-    CU_ASSERT_PTR_NOT_NULL(page_scan);
+    CU_ASSERT_EQUAL(etmemd_scan_init(), 0);
 
-    proj = (struct project *)calloc(1, sizeof(struct project));
-    CU_ASSERT_PTR_NOT_NULL(proj);
-
-    proj->scan_param = page_scan;
-    proj->type = PAGE_SCAN;
-    page_scan->loop = loop;
-    page_scan->sleep = sleep;
-
-    tk = (struct task *)calloc(1, sizeof(struct task));
-    CU_ASSERT_PTR_NOT_NULL(tk);
-
-    eng = calloc(1, sizeof(struct engine));
-    eng->name = "cslide";
-
-    eng->proj = proj;
-    tk->eng = eng;
-
-    return tk;
+    /* init again before exit */
+    CU_ASSERT_NOT_EQUAL(etmemd_scan_init(), 0);
+    etmemd_scan_exit();
 }
 
-void check_vmas(struct vmas *vmas)
+static void check_vmas(struct vmas *vmas)
 {
-    CU_ASSERT_NOT_EQUAL(vmas->vma_cnt, 0);
-
     int i;
     struct vma *curr_vma = NULL;
+
+    CU_ASSERT_NOT_EQUAL(vmas->vma_cnt, 0);
 
     curr_vma = vmas->vma_list;
     for (i = 0; i < vmas->vma_cnt; i++) {
@@ -81,7 +58,8 @@ void check_vmas(struct vmas *vmas)
     }
 }
 
-static void test_get_vmas_invalid(void)
+/* test invalid get_vmas */
+static void test_etmem_exp_scan_004(void)
 {
     const char *pid = "1";
     char *vmflags_array[10] = {"rd"};
@@ -91,34 +69,34 @@ static void test_get_vmas_invalid(void)
 
     CU_ASSERT_EQUAL(etmemd_scan_init(), 0);
 
-    // non-exist pid
+    /* non-exist pid */
     vmas = etmemd_get_vmas("0", vmflags_array, vmflag_num, is_anon_only);
     CU_ASSERT_PTR_NULL(vmas);
 
-    // pid is NULL
+    /* pid is NULL */
     vmas = etmemd_get_vmas(NULL, vmflags_array, vmflag_num, is_anon_only);
     CU_ASSERT_PTR_NULL(vmas);
 
-    // pid contains invalid characters
+    /* pid contains invalid characters */
     vmas = etmemd_get_vmas("1-", vmflags_array, vmflag_num, is_anon_only);
     CU_ASSERT_PTR_NULL(vmas);
 
-    // vmflags contains space
+    /* vmflags contains space */
     vmflags_array[0] = "r ";
     vmas = etmemd_get_vmas(pid, vmflags_array, vmflag_num, is_anon_only);
     CU_ASSERT_PTR_NULL(vmas);
 
-    // vmflags length is not 2
-    vmflags_array[0] = "r";
+    /* vmflags length is not 2 */
+    vmflags_array[0] = "rd ";
     vmas = etmemd_get_vmas(pid, vmflags_array, vmflag_num, is_anon_only);
     CU_ASSERT_PTR_NULL(vmas);
 
-    // vmflags is NULL
+    /* vmflags is NULL */
     vmflags_array[0] = NULL;
     vmas = etmemd_get_vmas(pid, vmflags_array, vmflag_num, is_anon_only);
     CU_ASSERT_PTR_NULL(vmas);
 
-    // test free NULL
+    /* test free is NULL */
     vmas = NULL;
     etmemd_free_vmas(vmas);
 
@@ -126,7 +104,8 @@ static void test_get_vmas_invalid(void)
 }
 
 
-static void test_get_vmas_valid(void)
+/* test valid get_vmas */
+static void test_etmem_exp_scan_003(void)
 {
     const char *pid = "1";
     char *vmflags_array[10] = {"rd"};
@@ -136,48 +115,24 @@ static void test_get_vmas_valid(void)
     struct vma *curr_vma = NULL;
     int i;
 
-    // get vmas without init
+    /* get vmas without init */
     vmas = etmemd_get_vmas(pid, vmflags_array, vmflag_num, is_anon_only);
-
     CU_ASSERT_PTR_NOT_NULL(vmas);
     check_vmas(vmas);
-
     etmemd_free_vmas(vmas);
 
-    // get vmas with init
+    /* get vmas with init */
     CU_ASSERT_EQUAL(etmemd_scan_init(), 0);
-
     vmas = etmemd_get_vmas(pid, vmflags_array, vmflag_num, is_anon_only);
-
     CU_ASSERT_PTR_NOT_NULL(vmas);
     check_vmas(vmas);
-
     etmemd_free_vmas(vmas);
-
-    vmas = get_vmas("1");
-    CU_ASSERT_PTR_NOT_NULL(vmas);
-    CU_ASSERT_NOT_EQUAL(vmas->vma_cnt, 0);
-
-    curr_vma = vmas->vma_list;
-    for (i = 0; i < vmas->vma_cnt; i++) {
-        CU_ASSERT_PTR_NOT_NULL(curr_vma);
-        curr_vma = curr_vma->next;
-    }
-
-    free_vmas(vmas);
     etmemd_scan_exit();
 }
 
-static void test_get_vmas(void)
+/* test invalid get_page_refs */
+static void test_etmem_exp_scan_006(void)
 {
-    test_get_vmas_invalid();
-    test_get_vmas_valid();
-}
-
-static void test_get_page_refs_invalid(void)
-{
-    CU_ASSERT_EQUAL(etmemd_scan_init(), 0);
-
     const char *pid = "1";
     char *vmflags_array[10] = {"rd"};
     int vmflag_num = 1;
@@ -186,13 +141,15 @@ static void test_get_page_refs_invalid(void)
     struct page_refs *page_refs = NULL;
     int flags = SCAN_AS_HUGE | SCAN_IGN_HOST;
 
-    // free null pointer
+    CU_ASSERT_EQUAL(etmemd_scan_init(), 0);
+
+    /* free null pointer */
     etmemd_free_page_refs(page_refs);
 
-    // vmas is NULL
+    /* vmas is NULL */
     CU_ASSERT_EQUAL(etmemd_get_page_refs(vmas, pid, &page_refs, flags), -1);
 
-    // vmas address range invalid
+    /* vmas address range invalid*/
     vmas = (struct vmas *)calloc(1, sizeof(struct vmas));
     CU_ASSERT_PTR_NOT_NULL(vmas);
     vmas->vma_cnt = 1;
@@ -211,15 +168,15 @@ static void test_get_page_refs_invalid(void)
     CU_ASSERT_PTR_NOT_NULL(vmas);
     check_vmas(vmas);
 
-    // pid not exist
+    /* pid not exist */
     CU_ASSERT_EQUAL(etmemd_get_page_refs(vmas, "0", &page_refs, flags), -1);
     CU_ASSERT_PTR_NULL(page_refs);
 
-    // pid is NULL
+    /* pid is NULL */
     CU_ASSERT_EQUAL(etmemd_get_page_refs(vmas, NULL, &page_refs, flags), -1);
     CU_ASSERT_PTR_NULL(page_refs);
 
-    // pid contains invalid chars
+    /* pid contains invalid chars */
     CU_ASSERT_EQUAL(etmemd_get_page_refs(vmas, "--", &page_refs, flags), -1);
     CU_ASSERT_PTR_NULL(page_refs);
 
@@ -228,7 +185,8 @@ static void test_get_page_refs_invalid(void)
     etmemd_scan_exit();
 }
 
-static void test_get_page_refs_valid()
+/* test valid get_page_refs */
+static void test_etmem_exp_scan_005(void)
 {
     CU_ASSERT_EQUAL(etmemd_scan_init(), 0);
 
@@ -247,89 +205,13 @@ static void test_get_page_refs_valid()
     CU_ASSERT_EQUAL(etmemd_get_page_refs(vmas, pid, &page_refs, flags), 0);
     CU_ASSERT_PTR_NOT_NULL(page_refs);
 
-    unsigned long use_rss;
+    etmemd_scan_exit();
 
-    CU_ASSERT_EQUAL(get_page_refs(vmas, pid, &page_refs, &use_rss, NULL), 0);
-    CU_ASSERT_PTR_NOT_NULL(page_refs);
-    CU_ASSERT_NOT_EQUAL(use_rss, 0);
+    /* get_page_refs after exit */
+    CU_ASSERT_NOT_EQUAL(etmemd_get_page_refs(vmas, pid, &page_refs, flags), 0);
 
     etmemd_free_page_refs(page_refs);
     etmemd_free_vmas(vmas);
-    etmemd_scan_exit();
-}
-
-static void test_get_page_refs(void)
-{
-    test_get_page_refs_invalid();
-    test_get_page_refs_valid();
-}
-
-static void test_scan_error(void)
-{
-    unsigned int pid_error = 1111111111;
-    int loop = 1;
-    int sleep = 1;
-    struct task_pid *tpid = NULL;
-    struct task *tk = NULL;
-
-    tk = alloc_tk(loop, sleep);
-    tpid = alloc_tkpid(pid_error, tk);
-
-    CU_ASSERT_PTR_NULL(etmemd_do_scan(tpid, NULL));
-    CU_ASSERT_PTR_NULL(etmemd_do_scan(tpid, tk));
-
-    free(tk->eng->proj->scan_param);
-    free(tk->eng->proj);
-    free(tk->eng);
-    free(tk);
-    free(tpid);
-}
-
-static void test_etmem_scan_ok(void)
-{
-    unsigned int pid_ok = 1;
-    int loop = 1;
-    int sleep = 1;
-    struct page_refs *page_refs = NULL;
-    struct task_pid *tpid = NULL;
-    struct task *tk = NULL;
-
-    tk = alloc_tk(loop, sleep);
-    tpid = alloc_tkpid(pid_ok, tk);
-
-    CU_ASSERT_EQUAL(etmemd_scan_init(), 0);
-
-    page_refs = etmemd_do_scan(tpid, tk);
-    CU_ASSERT_PTR_NOT_NULL(page_refs);
-    free(tk->eng->proj->scan_param);
-    free(tk->eng->proj);
-    free(tk->eng);
-    free(tk);
-    free(tpid);
-    clean_page_refs_unexpected(&page_refs);
-    CU_ASSERT_PTR_NULL(page_refs);
-    etmemd_scan_exit();
-}
-
-static void test_add_pg_to_mem_grade()
-{
-    const char *pid = "1";
-    struct vmas *vma = NULL;
-    struct page_refs *page_refs = NULL;
-    struct page_refs *list = NULL;
-
-    CU_ASSERT_EQUAL(etmemd_scan_init(), 0);
-
-    vma = get_vmas(pid);
-    CU_ASSERT_EQUAL(get_page_refs(vma, pid, &page_refs, NULL, NULL), 0);
-    page_refs = add_page_refs_into_memory_grade(page_refs, &list);
-    CU_ASSERT_PTR_NOT_NULL(page_refs);
-    CU_ASSERT_PTR_NOT_NULL(list);
-
-    free(list);
-    etmemd_free_page_refs(page_refs);
-    free_vmas(vma);
-    etmemd_scan_exit();
 }
 
 typedef enum {
@@ -354,16 +236,17 @@ int main(int argc, const char **argv)
         return CU_get_error();
     }
 
-    suite = CU_add_suite("etmem_scan_ops", NULL, NULL);
+    suite = CU_add_suite("etmem_scan_ops_exp", NULL, NULL);
     if (suite == NULL) {
         goto ERROR;
     }
 
-    if (CU_ADD_TEST(suite, test_get_vmas) == NULL ||
-        CU_ADD_TEST(suite, test_get_page_refs) == NULL ||
-        CU_ADD_TEST(suite, test_scan_error) == NULL ||
-        CU_ADD_TEST(suite, test_etmem_scan_ok) == NULL ||
-        CU_ADD_TEST(suite, test_add_pg_to_mem_grade) == NULL) {
+    if (CU_ADD_TEST(suite, test_etmem_exp_scan_001) == NULL ||
+        CU_ADD_TEST(suite, test_etmem_exp_scan_002) == NULL ||
+        CU_ADD_TEST(suite, test_etmem_exp_scan_003) == NULL ||
+        CU_ADD_TEST(suite, test_etmem_exp_scan_004) == NULL ||
+        CU_ADD_TEST(suite, test_etmem_exp_scan_005) == NULL ||
+        CU_ADD_TEST(suite, test_etmem_exp_scan_006) == NULL) {
             goto ERROR;
     }
 

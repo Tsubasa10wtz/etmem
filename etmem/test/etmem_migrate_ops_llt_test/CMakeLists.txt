@@ -8,9 +8,9 @@
 #  * IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR
 #  * PURPOSE.
 #  * See the Mulan PSL v2 for more details.
-#  * Author: shikemeng
-#  * Create: 2021-11-30
-#  * Description: CMakefileList for etmem_scan_ops_llt_test
+#  * Author: liubo
+#  * Create: 2021-12-10
+#  * Description: CMakefileList for etmem_migrate_ops_llt to compile
 #  ******************************************************************************/
 
 project(etmem)
@@ -19,8 +19,9 @@ INCLUDE_DIRECTORIES(../../inc/etmem_inc)
 INCLUDE_DIRECTORIES(../../inc/etmemd_inc)
 INCLUDE_DIRECTORIES(${GLIB2_INCLUDE_DIRS})
 
-SET(EXE etmem_scan_ops_llt)
+SET(EXE etmem_migrate_ops_llt)
 
-add_executable(${EXE} etmem_scan_ops_llt.c)
+add_executable(${EXE} etmem_migrate_ops_llt.c)
 
+set_target_properties(${EXE} PROPERTIES LINK_FLAGS "-Wl,--wrap,get_mem_from_proc_file")
 target_link_libraries(${EXE} cunit ${BUILD_DIR}/lib/libetmemd.so pthread dl rt boundscheck numa ${GLIB2_LIBRARIES})

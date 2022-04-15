@@ -41,7 +41,8 @@ set(ETMEMD_SRC
  ${ETMEMD_SRC_DIR}/etmemd_threadpool.c
  ${ETMEMD_SRC_DIR}/etmemd_threadtimer.c
  ${ETMEMD_SRC_DIR}/etmemd_pool_adapter.c
- ${ETMEMD_SRC_DIR}/etmemd_migrate.c)
+ ${ETMEMD_SRC_DIR}/etmemd_migrate.c
+ ${ETMEMD_SRC_DIR}/etmemd_damon.c)
 
 set(ETMEM_SRC
  ${ETMEM_SRC_DIR}/etmem.c
@@ -59,6 +60,7 @@ set(ETMEMD_CSLIDE_DEP
  ${ETMEMD_SRC_DIR}/etmemd_log.c
  ${ETMEMD_SRC_DIR}/etmemd_project.c
  ${ETMEMD_SRC_DIR}/etmemd_engine.c
+ ${ETMEMD_SRC_DIR}/etmemd_memdcd.c
  ${ETMEMD_SRC_DIR}/etmemd_slide.c
  ${ETMEMD_SRC_DIR}/etmemd_thirdparty.c
  ${ETMEMD_SRC_DIR}/etmemd_task.c
@@ -66,7 +68,8 @@ set(ETMEMD_CSLIDE_DEP
  ${ETMEMD_SRC_DIR}/etmemd_threadpool.c
  ${ETMEMD_SRC_DIR}/etmemd_threadtimer.c
  ${ETMEMD_SRC_DIR}/etmemd_pool_adapter.c
- ${ETMEMD_SRC_DIR}/etmemd_migrate.c)
+ ${ETMEMD_SRC_DIR}/etmemd_migrate.c
+ ${ETMEMD_SRC_DIR}/etmemd_damon.c)
 
 set(TEST_COMMON_SRC
  ${TEST_COMMON_DIR}/test_common.c)
@@ -185,7 +188,7 @@ set_target_properties(etmem_shared PROPERTIES LINK_FLAGS ${COMMON_LINK_OPT})
 target_link_libraries(etmem_shared PRIVATE ${COMMON_LINK_LIB})
 SET_TARGET_PROPERTIES(etmem_shared PROPERTIES OUTPUT_NAME "etmem")
 
-# target test etmemd share
+# target test common share
 target_compile_options(test_common PRIVATE ${COMMON_COMPILE_OPT} ${SHARE_COMPILE_OPT})
 set_target_properties(test_common PROPERTIES LINK_FLAGS ${COMMON_LINK_OPT})
 target_link_libraries(test_common PRIVATE ${COMMON_LINK_LIB} ${SERVER_LINK_LIB})
@@ -196,3 +199,16 @@ target_compile_options(cslide_dep PRIVATE ${COMMON_COMPILE_OPT} ${SHARE_COMPILE_
 set_target_properties(cslide_dep PROPERTIES LINK_FLAGS ${COMMON_LINK_OPT})
 target_link_libraries(cslide_dep PRIVATE ${COMMON_LINK_LIB} ${SERVER_LINK_LIB})
 
+add_subdirectory(etmem_common_func_llt_test)
+add_subdirectory(etmem_log_ops_llt_test)
+add_subdirectory(etmem_migrate_ops_llt_test)
+add_subdirectory(etmem_task_ops_llt_test)
+add_subdirectory(etmem_threadpool_ops_llt_test)
+add_subdirectory(etmem_socket_ops_llt_test)
+add_subdirectory(etmem_scan_ops_llt_test)
+add_subdirectory(etmem_scan_ops_export_llt_test)
+add_subdirectory(etmem_slide_ops_llt_test)
+add_subdirectory(etmem_timer_ops_llt_test)
+add_subdirectory(etmem_project_ops_llt_test)
+add_subdirectory(etmem_cslide_ops_llt_test)
+add_subdirectory(etmem_thirdparty_ops_llt_test)

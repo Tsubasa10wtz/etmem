@@ -117,6 +117,161 @@ static void etmem_pro_add_interval(void)
     destroy_proj_config(config);
 }
 
+static void etmem_pro_add_sysmem_threshold_error(void)
+{
+    struct proj_test_param param;
+    GKeyFile *config = NULL;
+
+    init_proj_param(&param);
+
+    param.sysmem_threshold = "101";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_INVAL);
+    destroy_proj_config(config);
+
+    param.sysmem_threshold = "abc";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_INVAL);
+    destroy_proj_config(config);
+
+    param.sysmem_threshold = "a10b";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_INVAL);
+    destroy_proj_config(config);
+
+    param.sysmem_threshold = "10a";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_INVAL);
+    destroy_proj_config(config);
+
+    param.sysmem_threshold = "-1";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_INVAL);
+    destroy_proj_config(config);
+}
+
+static void etmem_pro_add_sysmem_threshold_ok(void)
+{
+    struct proj_test_param param;
+    GKeyFile *config = NULL;
+
+    init_proj_param(&param);
+
+    param.sysmem_threshold = "0";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_SUCCESS);
+    CU_ASSERT_EQUAL(etmemd_project_remove(config), OPT_SUCCESS);
+    destroy_proj_config(config);
+
+    param.sysmem_threshold = "1";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_SUCCESS);
+    CU_ASSERT_EQUAL(etmemd_project_remove(config), OPT_SUCCESS);
+    destroy_proj_config(config);
+
+    param.sysmem_threshold = "2";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_SUCCESS);
+    CU_ASSERT_EQUAL(etmemd_project_remove(config), OPT_SUCCESS);
+    destroy_proj_config(config);
+
+    param.sysmem_threshold = "99";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_SUCCESS);
+    CU_ASSERT_EQUAL(etmemd_project_remove(config), OPT_SUCCESS);
+    destroy_proj_config(config);
+
+    param.sysmem_threshold = "100";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_SUCCESS);
+    CU_ASSERT_EQUAL(etmemd_project_remove(config), OPT_SUCCESS);
+    destroy_proj_config(config);
+}
+
+static void etmem_pro_add_swapcache_mark_error(void)
+{
+    struct proj_test_param param;
+    GKeyFile *config = NULL;
+
+    init_proj_param(&param);
+
+    param.swapcache_high_wmark = "-1";
+    param.swapcache_low_wmark = "-1";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_INVAL);
+    destroy_proj_config(config);
+
+    param.swapcache_high_wmark = "1";
+    param.swapcache_low_wmark = "-1";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_INVAL);
+    destroy_proj_config(config);
+
+    param.swapcache_high_wmark = "-1";
+    param.swapcache_low_wmark = "1";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_INVAL);
+    destroy_proj_config(config);
+
+    param.swapcache_high_wmark = "1";
+    param.swapcache_low_wmark = "2";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_INVAL);
+    destroy_proj_config(config);
+
+    param.swapcache_high_wmark = "101";
+    param.swapcache_low_wmark = "100";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_INVAL);
+    destroy_proj_config(config);
+
+    param.swapcache_high_wmark = "100";
+    param.swapcache_low_wmark = "101";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_INVAL);
+    destroy_proj_config(config);
+
+    param.swapcache_high_wmark = "101";
+    param.swapcache_low_wmark = "101";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_INVAL);
+    destroy_proj_config(config);
+
+    param.swapcache_high_wmark = "5";
+    param.swapcache_low_wmark = NULL;
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_INVAL);
+    destroy_proj_config(config);
+
+    param.swapcache_high_wmark = NULL;
+    param.swapcache_low_wmark = "5";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_INVAL);
+    destroy_proj_config(config);
+}
+
+static void etmem_pro_add_swapcache_mark_ok(void)
+{
+    struct proj_test_param param;
+    GKeyFile *config = NULL;
+
+    init_proj_param(&param);
+
+    param.swapcache_high_wmark = "2";
+    param.swapcache_low_wmark = "1";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_SUCCESS);
+    CU_ASSERT_EQUAL(etmemd_project_remove(config), OPT_SUCCESS);
+    destroy_proj_config(config);
+
+    param.swapcache_high_wmark = "100";
+    param.swapcache_low_wmark = "99";
+    config = construct_proj_config(&param);
+    CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_SUCCESS);
+    CU_ASSERT_EQUAL(etmemd_project_remove(config), OPT_SUCCESS);
+    destroy_proj_config(config);
+}
+
 static void etmem_pro_add_loop(void)
 {
     struct proj_test_param param;
@@ -231,6 +386,8 @@ void test_etmem_prj_add_error(void)
     etmem_pro_add_loop();
     etmem_pro_add_sleep();
     etmem_pro_lack_loop();
+    etmem_pro_add_sysmem_threshold_error();
+    etmem_pro_add_swapcache_mark_error();
 }
 
 void test_etmem_prj_del_error(void)
@@ -256,9 +413,11 @@ static void add_project_once(void)
     struct proj_test_param param;
     GKeyFile *config = NULL;
 
+    etmem_pro_add_sysmem_threshold_ok();
+    etmem_pro_add_swapcache_mark_ok();
     init_proj_param(&param);
 
-    CU_ASSERT_EQUAL(etmemd_project_show(NULL, 0), OPT_PRO_NOEXIST);
+    CU_ASSERT_EQUAL(etmemd_project_show(NULL, 0), OPT_SUCCESS);
 
     config = construct_proj_config(&param);
     CU_ASSERT_EQUAL(etmemd_project_add(config), OPT_SUCCESS);
@@ -270,7 +429,7 @@ static void add_project_once(void)
     CU_ASSERT_EQUAL(etmemd_project_remove(config), OPT_SUCCESS);
     destroy_proj_config(config);
 
-    CU_ASSERT_EQUAL(etmemd_project_show("noexist", 0), OPT_PRO_NOEXIST);
+    CU_ASSERT_EQUAL(etmemd_project_show("noexist", 0), OPT_SUCCESS);
 }
 
 static int add_project_multiple(int proj_add_num)
@@ -348,7 +507,7 @@ void test_etmem_mig_stop_error(void)
     CU_ASSERT_EQUAL(etmemd_migrate_stop(""), OPT_PRO_NOEXIST);
     CU_ASSERT_EQUAL(etmemd_migrate_stop("ETMEM"), OPT_PRO_NOEXIST);
     CU_ASSERT_EQUAL(etmemd_migrate_stop("ET^$%*MEM"), OPT_PRO_NOEXIST);
- 
+
     param.proj_name = "add_for_migrate_stop_test";
     do_add_proj_test(&param);
 
