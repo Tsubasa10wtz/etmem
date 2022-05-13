@@ -566,7 +566,7 @@ static struct cslide_pid_params *alloc_pid_params(struct cslide_eng_params *eng_
 {
     int i;
     struct cslide_pid_params *params = calloc(1, sizeof(struct cslide_pid_params));
-    int count = eng_params->loop;
+    int count = eng_params->loop * MAX_ACCESS_WEIGHT;
     int pair_num = eng_params->node_map.cur_num;
     int node_num = eng_params->mem.node_num;
 
@@ -1156,7 +1156,7 @@ static void move_hot_pages(struct cslide_eng_params *eng_params, struct flow_ctr
     filter.flow_enough = is_hot_enough;
     filter.filter_policy = to_hot_policy;
     filter.ctrl = ctrl;
-    filter.count_start = eng_params->loop;
+    filter.count_start = eng_params->loop * MAX_ACCESS_WEIGHT;
     filter.count_end = eng_params->hot_threshold - 1;
     filter.count_step = -1;
     do_filter(&filter, eng_params);
@@ -2026,6 +2026,11 @@ static int fill_hot_threshold(void *obj, void *val)
     if (t < 0) {
         etmemd_log(ETMEMD_LOG_ERR, "config hot threshold %d not valid\n", t);
         return -1;
+    }
+
+    if (t > params->loop * MAX_ACCESS_WEIGHT + 1) {
+        // limit hot_threshold to avoid overflow in do_filter
+        t = params->loop * MAX_ACCESS_WEIGHT + 1;
     }
 
     params->hot_threshold = t;

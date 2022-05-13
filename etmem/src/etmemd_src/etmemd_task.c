@@ -428,6 +428,7 @@ static int fill_task_type(void *obj, void *val)
     char *type = (char *)val;
     if (strcmp(val, "pid") != 0 && strcmp(val, "name") != 0) {
         etmemd_log(ETMEMD_LOG_ERR, "invalid task type, must be pid or name.\n");
+        free(val);
         return -1;
     }
 

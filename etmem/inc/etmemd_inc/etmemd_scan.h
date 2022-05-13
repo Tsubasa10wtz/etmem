@@ -59,6 +59,7 @@ enum access_type_weight {
     IDLE_TYPE_WEIGHT = 0,
     READ_TYPE_WEIGHT = 1,
     WRITE_TYPE_WEIGHT = 3,
+    MAX_ACCESS_WEIGHT = WRITE_TYPE_WEIGHT,
 };
 
 struct walk_address {

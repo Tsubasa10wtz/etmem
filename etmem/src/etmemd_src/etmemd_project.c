@@ -729,6 +729,7 @@ static int project_fill_by_conf(GKeyFile *config, struct project *proj)
     if (!check_swapcache_wmark_valid(proj)) {
         etmemd_log(ETMEMD_LOG_ERR, "swapcache wmark is not valid, low wmark: %d, high wmark: %d",
                     proj->swapcache_low_wmark, proj->swapcache_high_wmark);
+        clear_project(proj);
         return -1;
     }
     return 0;
