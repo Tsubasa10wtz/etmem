@@ -91,10 +91,17 @@ static int set_engine_ops(struct engine *eng, struct thirdparty_params *params)
         return -1;
     }
 
-    handler = dlopen(params->libname, RTLD_NOW | RTLD_LOCAL);
+    if (file_permission_check(resolve_path, S_IRWXU) != 0 &&
+        file_permission_check(resolve_path, S_IRUSR | S_IXUSR) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "file : %s permissions do not meet requirements."
+                                   "Only support 500 or 700\n", resolve_path);
+        return -1;
+    }
+
+    handler = dlopen(resolve_path, RTLD_NOW | RTLD_LOCAL);
     err = dlerror();
     if (err != NULL && handler == NULL) {
-        etmemd_log(ETMEMD_LOG_ERR, "load library %s fail with error: %s\n", params->libname, err);
+        etmemd_log(ETMEMD_LOG_ERR, "load library %s fail with error: %s\n", resolve_path, err);
         return -1;
     }
 

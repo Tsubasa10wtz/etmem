@@ -22,10 +22,8 @@
 #include <sys/time.h>
 #include <ctype.h>
 #include <unistd.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
-#include <sys/types.h>
 
 #include "securec.h"
 #include "etmemd_common.h"
@@ -555,3 +553,43 @@ free_out:
 out:
     return ret;
 }
+
+int file_permission_check(const char *file_path, mode_t mode)
+{
+    struct stat buf = {0};
+    mode_t file_p;
+
+    if (file_path == NULL || (mode & S_IRWX_VALID) == 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "file_permission_check failed, invalid para\n");
+        return -1;
+    }
+
+    if (access(file_path, F_OK) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "no such file: %s\n", file_path);
+        return -1;
+    }
+
+    if (stat(file_path, &buf) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "get file : %s stat failed.\n", file_path);
+        return -1;
+    }
+
+    if (S_ISDIR(buf.st_mode)) {
+        etmemd_log(ETMEMD_LOG_ERR, "file : %s is a dir\n", file_path);
+        return -1;
+    }
+
+    if (buf.st_uid != 0 || buf.st_gid != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "file : %s should created by root\n", file_path);
+        return -1;
+    }
+
+    file_p = buf.st_mode & S_IRWX_VALID;
+    if (file_p != mode) {
+        etmemd_log(ETMEMD_LOG_WARN, "file : %s mode is wrong.\n", file_path);
+        return -1;
+    }
+
+    return 0;
+}
+

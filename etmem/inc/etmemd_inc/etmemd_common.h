@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 
 #define PROC_PATH                       "/proc/"
 #define STATUS_FILE                     "/status"
@@ -39,6 +40,7 @@
 #define MAX_SWAPCACHE_WMARK_VALUE       100
 
 #define ARRAY_SIZE(array)               (sizeof(array) / sizeof((array)[0]))
+#define S_IRWX_VALID                    (S_IRWXU | S_IRWXG | S_IRWXO)
 
 /* in some system the max length of pid may be larger than 5, so we use 10 herr */
 #define PID_STR_MAX_LEN                 10
@@ -80,5 +82,5 @@ int get_mem_from_proc_file(const char *pid, const char *file_name, unsigned long
 int dprintf_all(int fd, const char *format, ...);
 
 int get_swap_threshold_inKB(const char *string, unsigned long *value);
-
+int file_permission_check(const char *file_path, mode_t mode);
 #endif
