@@ -593,3 +593,30 @@ int file_permission_check(const char *file_path, mode_t mode)
     return 0;
 }
 
+int file_size_check(const char *file_path, off_t size)
+{
+    struct stat buf = {0};
+
+    if (file_path == NULL || size <= 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "file_size_check failed, invalid para\n");
+        return -1;
+    }
+
+    if (access(file_path, F_OK) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "no such file: %s\n", file_path);
+        return -1;
+    }
+
+    if (stat(file_path, &buf) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "get file : %s stat failed.\n", file_path);
+        return -1;
+    }
+
+    if (buf.st_size > size) {
+        etmemd_log(ETMEMD_LOG_WARN, "file : %s is too big.\n", file_path);
+        return -1;
+    }
+
+    return 0;
+}
+

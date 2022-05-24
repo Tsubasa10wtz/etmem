@@ -181,13 +181,25 @@ static enum opt_result handle_obj_cmd(char *file_name, enum cmd_type type)
         return OPT_INVAL;
     }
 
+    if (file_permission_check(resolve_path, S_IRUSR) != 0 &&
+        file_permission_check(resolve_path, S_IRUSR | S_IWUSR) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "config file : %s permissions do not meet requirements."
+                                   "Only support 600 or 400\n", resolve_path);
+        return OPT_INVAL;
+    }
+
+    if (file_size_check(resolve_path, MAX_CONFIG_FILE_SIZE) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "config file: %s is too big.", resolve_path);
+        return OPT_INVAL;
+    }
+
     config = g_key_file_new();
     if (config == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "get empty config file fail\n");
         return OPT_INTER_ERR;
     }
 
-    if (g_key_file_load_from_file(config, file_name, G_KEY_FILE_NONE, NULL) == FALSE) {
+    if (g_key_file_load_from_file(config, resolve_path, G_KEY_FILE_NONE, NULL) == FALSE) {
         etmemd_log(ETMEMD_LOG_ERR, "load config file fail\n");
         ret = OPT_INTER_ERR;
         goto free_file;

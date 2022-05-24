@@ -37,6 +37,7 @@
 #define KB_TO_BYTE(s)                   ((s) << 10)
 #define GB_TO_KB(s)                     ((s) << 20)
 
+#define MAX_CONFIG_FILE_SIZE            (KB_TO_BYTE(10 * 1024))
 #define MAX_SWAPCACHE_WMARK_VALUE       100
 
 #define ARRAY_SIZE(array)               (sizeof(array) / sizeof((array)[0]))
@@ -83,4 +84,6 @@ int dprintf_all(int fd, const char *format, ...);
 
 int get_swap_threshold_inKB(const char *string, unsigned long *value);
 int file_permission_check(const char *file_path, mode_t mode);
+int file_size_check(const char *file_path, off_t size);
+
 #endif
