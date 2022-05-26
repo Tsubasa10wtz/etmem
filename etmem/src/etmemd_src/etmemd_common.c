@@ -357,54 +357,31 @@ static bool check_result_str_valid(const char *result)
     return true;
 }
 
-static unsigned long skip_colon_to_parse(const char *str, unsigned long idx)
-{
-    size_t str_len = strlen(str);
-
-    while (idx < str_len) {
-        if (!is_valid_char_for_value(" :\t", str[idx])) {
-            break;
-        }
-        idx += 1;
-    }
-
-    return idx;
-}
-
-/*
- * the caller should make sure that str is not NULL, and the content
- * of str must not contain ' ' or '\t' at the beginning and the end
- * */
-int get_keyword_and_value(const char *str, char *key, char *val)
+int check_str_valid(const char *str)
 {
     unsigned long idx = 0;
     unsigned long end_idx;
     size_t val_len;
+    char val[KEY_VALUE_MAX_LEN] = {0};
 
-    get_valid_conf_str(str, idx, key, "%_", &end_idx);
-    if (!check_result_str_valid(key)) {
-        etmemd_log(ETMEMD_LOG_ERR, "get keyword of %s fail\n", str);
+    if (str == NULL || strlen(str) == 0 || strlen(str) > NAME_STR_MAX_LEN) {
+        etmemd_log(ETMEMD_LOG_ERR, "input str: %s is invalid.\n", str);
         return -1;
     }
-    if (!is_valid_char_for_value(" :\t", str[end_idx])) {
-        etmemd_log(ETMEMD_LOG_ERR, "%s contains invalid symbol in keyword\n", str);
-        return -1;
-    }
-    etmemd_log(ETMEMD_LOG_DEBUG, "parse config get key: %s\n", key);
 
-    /* skip the string contains ' ', '\t' and ':' between key and value */
-    idx = skip_colon_to_parse(str, end_idx);
-    val_len = strlen(str) - idx;
+    val_len = strlen(str);
 
     get_valid_conf_str(str, idx, val, ".%/_-", &end_idx);
     if (!check_result_str_valid(val)) {
-        etmemd_log(ETMEMD_LOG_ERR, "get value of %s fail\n", str);
+        etmemd_log(ETMEMD_LOG_ERR, "get value of %s fail, contain invalid symbol\n", str);
         return -1;
     }
+
     if (strlen(val) != val_len) {
         etmemd_log(ETMEMD_LOG_ERR, "%s contains invalid symbol in value\n", str);
         return -1;
     }
+
     etmemd_log(ETMEMD_LOG_DEBUG, "parse config get value: %s\n", val);
 
     return 0;
