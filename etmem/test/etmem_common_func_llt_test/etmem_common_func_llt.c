@@ -336,66 +336,6 @@ static void test_etmemd_send_ioctl_cmd_ok(void)
     fclose(fp);
 }
 
-static void test_get_key_value_error(void)
-{
-    char key[KEY_VALUE_MAX_LEN] = {};
-    char value[KEY_VALUE_MAX_LEN] = {};
-
-    CU_ASSERT_EQUAL(get_keyword_and_value("", key, value), -1);
-    CU_ASSERT_EQUAL(get_keyword_and_value("abcd", key, value), -1);
-    CU_ASSERT_EQUAL(get_keyword_and_value(":1", key, value), -1);
-    CU_ASSERT_EQUAL(get_keyword_and_value("a:", key, value), -1);
-    CU_ASSERT_EQUAL(get_keyword_and_value("#a:1", key, value), -1);
-    CU_ASSERT_EQUAL(get_keyword_and_value("a.b:1", key, value), -1);
-    CU_ASSERT_EQUAL(get_keyword_and_value("loop:2*4", key, value), -1);
-}
-
-static void test_get_key_value_ok(void)
-{
-    char key[KEY_VALUE_MAX_LEN] = {};
-    char value[KEY_VALUE_MAX_LEN] = {};
-
-    CU_ASSERT_EQUAL(get_keyword_and_value("loop:30", key, value), 0);
-    CU_ASSERT_STRING_EQUAL(key, "loop");
-    CU_ASSERT_STRING_EQUAL(value, "30");
-    CU_ASSERT_EQUAL(get_keyword_and_value("loop 30", key, value), 0);
-    CU_ASSERT_STRING_EQUAL(key, "loop");
-    CU_ASSERT_STRING_EQUAL(value, "30");
-    CU_ASSERT_EQUAL(get_keyword_and_value("loop\t30", key, value), 0);
-    CU_ASSERT_STRING_EQUAL(key, "loop");
-    CU_ASSERT_STRING_EQUAL(value, "30");
-    CU_ASSERT_EQUAL(get_keyword_and_value("loop :30", key, value), 0);
-    CU_ASSERT_STRING_EQUAL(key, "loop");
-    CU_ASSERT_STRING_EQUAL(value, "30");
-    CU_ASSERT_EQUAL(get_keyword_and_value("loop\t:30", key, value), 0);
-    CU_ASSERT_STRING_EQUAL(key, "loop");
-    CU_ASSERT_STRING_EQUAL(value, "30");
-    CU_ASSERT_EQUAL(get_keyword_and_value("loop\t 30", key, value), 0);
-    CU_ASSERT_STRING_EQUAL(key, "loop");
-    CU_ASSERT_STRING_EQUAL(value, "30");
-    CU_ASSERT_EQUAL(get_keyword_and_value("a_b:1", key, value), 0);
-    CU_ASSERT_STRING_EQUAL(key, "a_b");
-    CU_ASSERT_STRING_EQUAL(value, "1");
-    CU_ASSERT_EQUAL(get_keyword_and_value("%P:1", key, value), 0);
-    CU_ASSERT_STRING_EQUAL(key, "%P");
-    CU_ASSERT_STRING_EQUAL(value, "1");
-    CU_ASSERT_EQUAL(get_keyword_and_value("%P:0.2", key, value), 0);
-    CU_ASSERT_STRING_EQUAL(key, "%P");
-    CU_ASSERT_STRING_EQUAL(value, "0.2");
-    CU_ASSERT_EQUAL(get_keyword_and_value("%P:20%", key, value), 0);
-    CU_ASSERT_STRING_EQUAL(key, "%P");
-    CU_ASSERT_STRING_EQUAL(value, "20%");
-    CU_ASSERT_EQUAL(get_keyword_and_value("output:/var/run", key, value), 0);
-    CU_ASSERT_STRING_EQUAL(key, "output");
-    CU_ASSERT_STRING_EQUAL(value, "/var/run");
-    CU_ASSERT_EQUAL(get_keyword_and_value("engine:dynamic_fb", key, value), 0);
-    CU_ASSERT_STRING_EQUAL(key, "engine");
-    CU_ASSERT_STRING_EQUAL(value, "dynamic_fb");
-    CU_ASSERT_EQUAL(get_keyword_and_value("name:qemu-kvm", key, value), 0);
-    CU_ASSERT_STRING_EQUAL(key, "name");
-    CU_ASSERT_STRING_EQUAL(value, "qemu-kvm");
-}
-
 typedef enum {
     CUNIT_SCREEN = 0,
     CUNIT_XMLFILE,
@@ -434,8 +374,6 @@ int main(int argc, const char **argv)
         CU_ADD_TEST(suite, test_get_uint_value_ok) == NULL ||
         CU_ADD_TEST(suite, test_get_ulong_value_error) == NULL ||
         CU_ADD_TEST(suite, test_get_ulong_value_ok) == NULL ||
-        CU_ADD_TEST(suite, test_get_key_value_error) == NULL ||
-        CU_ADD_TEST(suite, test_get_key_value_ok) == NULL ||
         CU_ADD_TEST(suite, test_parse_cmdline_error) == NULL ||
         CU_ADD_TEST(suite, test_parse_cmdline_ok) == NULL ||
         CU_ADD_TEST(suite, test_get_proc_file_error) == NULL ||
