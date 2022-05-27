@@ -45,6 +45,7 @@
 
 /* in some system the max length of pid may be larger than 5, so we use 10 herr */
 #define PID_STR_MAX_LEN                 10
+#define NAME_STR_MAX_LEN                15
 #define SWAP_THRESHOLD_MAX_LEN          10
 
 #define PIPE_FD_LEN                     2
@@ -76,7 +77,6 @@ void etmemd_safe_free(void **ptr);
 FILE *etmemd_get_proc_file(const char *pid, const char *file, const char *mode);
 int etmemd_send_ioctl_cmd(FILE *fp, struct ioctl_para *request);
 
-int get_keyword_and_value(const char *str, char *key, char *val);
 unsigned long get_pagesize(void);
 int get_mem_from_proc_file(const char *pid, const char *file_name, unsigned long *data, const char *cmpstr);
 
@@ -85,5 +85,5 @@ int dprintf_all(int fd, const char *format, ...);
 int get_swap_threshold_inKB(const char *string, unsigned long *value);
 int file_permission_check(const char *file_path, mode_t mode);
 int file_size_check(const char *file_path, off_t size);
-
+int check_str_valid(const char *str);
 #endif

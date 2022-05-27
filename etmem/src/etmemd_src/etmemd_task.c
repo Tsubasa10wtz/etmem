@@ -440,6 +440,13 @@ static int fill_task_value(void *obj, void *val)
 {
     struct task *tk = (struct task *)obj;
     char *value = (char *)val;
+
+    if (check_str_valid(value) != 0) {
+        etmemd_log(ETMEMD_LOG_ERR, "invalid task value, please check.\n");
+        free(val);
+        return -1;
+    }
+
     tk->value = value;
     return 0;
 }

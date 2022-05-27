@@ -32,8 +32,8 @@ static void usage(void)
             "    etmem OBJECT COMMAND\n"
             "    etmem help\n"
             "\nParameters:\n"
-            "    OBJECT  := { project | obj }\n"
-            "    COMMAND := { add | del | start | stop | show | help }\n");
+            "    OBJECT  := { project | obj | engine }\n"
+            "    COMMAND := { add | del | start | stop | show | eng_cmd | help }\n");
 }
 
 static struct etmem_obj *etmem_obj_get(const char *name)
