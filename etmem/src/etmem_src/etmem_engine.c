@@ -36,7 +36,8 @@ static void engine_help(void)
             "    2. socket name must be given.\n"
             "    3. engine name must be given.\n"
             "    4. engine cmd must be given.\n"
-            "    5. eng_cmd is supported by engine own.\n");
+            "    5. eng_cmd is supported by engine own.\n"
+            "    6. cslide engine eng_cmd: showtaskpages, showhostpages.\n");
 }
 
 static void engine_parse_cmd(struct etmem_conf *conf, struct mem_proj *proj)
