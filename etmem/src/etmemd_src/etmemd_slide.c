@@ -388,6 +388,7 @@ static void slide_stop_task(struct engine *eng, struct task *tk)
     struct slide_params *params = tk->params;
 
     stop_and_delete_threadpool_work(tk);
+    etmemd_free_task_pids(tk);
     free(params->executor);
     params->executor = NULL;
 }
