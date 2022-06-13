@@ -35,7 +35,13 @@ static int parse_item(GKeyFile *config, char *group_name, struct config_item *it
             break;
         case STR_VAL:
             val = (void *)g_key_file_get_string(config, group_name, item->key, &error);
-            if (val == NULL || strlen(val) == 0) {
+            if (val == NULL) {
+                etmemd_log(ETMEMD_LOG_ERR, "section %s of group [%s] should not be empty\n", item->key, group_name);
+                return -1;
+            }
+
+            if (strlen(val) == 0) {
+                free(val);
                 etmemd_log(ETMEMD_LOG_ERR, "section %s of group [%s] should not be empty\n", item->key, group_name);
                 return -1;
             }
