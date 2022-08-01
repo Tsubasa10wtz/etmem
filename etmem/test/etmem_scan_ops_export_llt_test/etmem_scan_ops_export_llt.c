@@ -191,7 +191,7 @@ static void test_etmem_exp_scan_005(void)
     CU_ASSERT_EQUAL(etmemd_scan_init(), 0);
 
     const char *pid = "1";
-    char *vmflags_array[10] = {"rd"};
+    char *vmflags_array[10] = {"wr"};
     int vmflag_num = 1;
     int is_anon_only = false;
     struct vmas *vmas = NULL;
