@@ -479,6 +479,20 @@ static void test_task_common_invalid_config(void)
     config = construct_slide_task_config(&slide_task);
     CU_ASSERT_NOT_EQUAL(etmemd_project_add_task(config), OPT_SUCCESS);
     destroy_slide_task_config(config);
+
+    /* task value invalid */
+    init_slide_task(&slide_task);
+    slide_task.task_param.value = "";
+    config = construct_slide_task_config(&slide_task);
+    CU_ASSERT_NOT_EQUAL(etmemd_project_add_task(config), OPT_SUCCESS);
+    destroy_slide_task_config(config);
+
+    /* task value invalid */
+    init_slide_task(&slide_task);
+    slide_task.task_param.type = "name*^";
+    config = construct_slide_task_config(&slide_task);
+    CU_ASSERT_NOT_EQUAL(etmemd_project_add_task(config), OPT_SUCCESS);
+    destroy_slide_task_config(config);
 }
 
 static void test_task_slide_invalid_config(void)

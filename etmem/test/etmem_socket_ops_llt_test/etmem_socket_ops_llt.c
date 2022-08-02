@@ -155,7 +155,7 @@ static void etmem_pro_add_error(void)
     CU_ASSERT_EQUAL(etmem_socket_client(ETMEM_CMD_ADD, "test", "file_name", ""), -1);
     file_name = get_length_str(RPC_SEND_FILE_MAX);
     CU_ASSERT_EQUAL(etmem_socket_client(ETMEM_CMD_ADD, "test", file_name, ""), -1);
-    CU_ASSERT_EQUAL(etmem_socket_client(ETMEM_CMD_ADD, "test", "file_name", "sock_name"), -1);
+    CU_ASSERT_EQUAL(etmem_socket_client(ETMEM_CMD_ADD, "test", file_name, "sock_name"), -1);
     free(file_name);
 }
 
@@ -183,7 +183,7 @@ static void etmem_pro_del_error(void)
     CU_ASSERT_EQUAL(etmem_socket_client(ETMEM_CMD_DEL, "test", "file_name", ""), -1);
     file_name = get_length_str(RPC_SEND_FILE_MAX);
     CU_ASSERT_EQUAL(etmem_socket_client(ETMEM_CMD_DEL, "test", file_name, ""), -1);
-    CU_ASSERT_EQUAL(etmem_socket_client(ETMEM_CMD_DEL, "test", "file_name", "sock_name"), -1);
+    CU_ASSERT_EQUAL(etmem_socket_client(ETMEM_CMD_DEL, "test", file_name, "sock_name"), -1);
     free(file_name);
 }
 
@@ -211,7 +211,7 @@ static void etmem_pro_start_error(void)
     CU_ASSERT_EQUAL(etmem_socket_client(ETMEM_CMD_START, "test", "file_name", ""), -1);
     file_name = get_length_str(RPC_SEND_FILE_MAX);
     CU_ASSERT_EQUAL(etmem_socket_client(ETMEM_CMD_START, "test", file_name, ""), -1);
-    CU_ASSERT_EQUAL(etmem_socket_client(ETMEM_CMD_START, "test", "file_name", "sock_name"), -1);
+    CU_ASSERT_EQUAL(etmem_socket_client(ETMEM_CMD_START, "test", file_name, "sock_name"), -1);
     free(file_name);
 }
 
@@ -239,7 +239,7 @@ static void etmem_pro_stop_error(void)
     CU_ASSERT_EQUAL(etmem_socket_client(ETMEM_CMD_STOP, "test", "file_name", ""), -1);
     file_name = get_length_str(RPC_SEND_FILE_MAX);
     CU_ASSERT_EQUAL(etmem_socket_client(ETMEM_CMD_STOP, "test", file_name, ""), -1);
-    CU_ASSERT_EQUAL(etmem_socket_client(ETMEM_CMD_STOP, "test", "file_name", "sock_name"), -1);
+    CU_ASSERT_EQUAL(etmem_socket_client(ETMEM_CMD_STOP, "test", file_name, "sock_name"), -1);
     free(file_name);
 }
 

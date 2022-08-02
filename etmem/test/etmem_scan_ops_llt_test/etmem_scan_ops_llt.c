@@ -233,7 +233,7 @@ static void test_get_page_refs_valid()
     CU_ASSERT_EQUAL(etmemd_scan_init(), 0);
 
     const char *pid = "1";
-    char *vmflags_array[10] = {"rd"};
+    char *vmflags_array[10] = {"wr"};
     int vmflag_num = 1;
     int is_anon_only = false;
     struct vmas *vmas = NULL;

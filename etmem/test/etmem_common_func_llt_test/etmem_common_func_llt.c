@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <stdbool.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -34,7 +35,7 @@
 #include "etmemd_scan.h"
 #include "securec.h"
 
-#define RECLAIM_SWAPCACHE_MAGIC      0X77
+#define RECLAIM_SWAPCACHE_MAGIC      0x77
 #define RECLAIM_SWAPCACHE_ON         _IOW(RECLAIM_SWAPCACHE_MAGIC, 0x1, unsigned int)
 #define SET_SWAPCACHE_WMARK          _IOW(RECLAIM_SWAPCACHE_MAGIC, 0x2, unsigned int)
 
@@ -336,6 +337,53 @@ static void test_etmemd_send_ioctl_cmd_ok(void)
     fclose(fp);
 }
 
+static void test_check_str_error(void)
+{
+    char *str = NULL;
+
+    CU_ASSERT_EQUAL(check_str_valid(str), -1);
+    CU_ASSERT_EQUAL(check_str_valid(""), -1);
+    CU_ASSERT_EQUAL(check_str_valid(":1"), -1);
+    CU_ASSERT_EQUAL(check_str_valid("a:"), -1);
+    CU_ASSERT_EQUAL(check_str_valid("#a:1"), -1);
+    CU_ASSERT_EQUAL(check_str_valid("a.b:1"), -1);
+    CU_ASSERT_EQUAL(check_str_valid("2*4"), -1);
+    CU_ASSERT_EQUAL(check_str_valid("2&^4"), -1);
+    CU_ASSERT_EQUAL(check_str_valid("longgerthan15charchar"), -1);
+}
+
+static void test_check_str_ok(void)
+{
+    CU_ASSERT_EQUAL(check_str_valid("30"), 0);
+    CU_ASSERT_EQUAL(check_str_valid("mysqld"), 0);
+    CU_ASSERT_EQUAL(check_str_valid("swap_test"), 0);
+    CU_ASSERT_EQUAL(check_str_valid("swap-test"), 0);
+    CU_ASSERT_EQUAL(check_str_valid("swap.test"), 0);
+    CU_ASSERT_EQUAL(check_str_valid("swap%test"), 0);
+    CU_ASSERT_EQUAL(check_str_valid("swap/var/run"), 0);
+}
+
+static void test_file_check_error(void)
+{
+    char *file_path = NULL;
+
+    CU_ASSERT_EQUAL(file_size_check(file_path, MAX_CONFIG_FILE_SIZE), -1);
+    CU_ASSERT_EQUAL(file_size_check("/proc/1/status", -1), -1);
+    CU_ASSERT_EQUAL(file_size_check("/proc/1/status", 0), -1);
+    CU_ASSERT_EQUAL(file_size_check("/proc/file_dont_exist/status", MAX_CONFIG_FILE_SIZE - 1), -1);
+
+    CU_ASSERT_EQUAL(file_permission_check(file_path, S_IRWX_VALID), -1);
+    CU_ASSERT_EQUAL(file_permission_check("/proc/1/status", 0), -1);
+    CU_ASSERT_EQUAL(file_permission_check("/proc/file_dont_exist/status", S_IRWX_VALID), -1);
+    CU_ASSERT_EQUAL(file_permission_check("/proc/1", S_IRWX_VALID), -1);
+}
+
+static void test_file_check_ok(void)
+{
+    CU_ASSERT_EQUAL(file_size_check("/proc/1/status", MAX_CONFIG_FILE_SIZE), 0);
+    CU_ASSERT_EQUAL(file_permission_check("/proc/1/status", S_IRUSR | S_IRGRP | S_IROTH), 0);
+}
+
 typedef enum {
     CUNIT_SCREEN = 0,
     CUNIT_XMLFILE,
@@ -374,6 +422,10 @@ int main(int argc, const char **argv)
         CU_ADD_TEST(suite, test_get_uint_value_ok) == NULL ||
         CU_ADD_TEST(suite, test_get_ulong_value_error) == NULL ||
         CU_ADD_TEST(suite, test_get_ulong_value_ok) == NULL ||
+        CU_ADD_TEST(suite, test_check_str_error) == NULL ||
+        CU_ADD_TEST(suite, test_check_str_ok) == NULL ||
+        CU_ADD_TEST(suite, test_file_check_error) == NULL ||
+        CU_ADD_TEST(suite, test_file_check_ok) == NULL ||
         CU_ADD_TEST(suite, test_parse_cmdline_error) == NULL ||
         CU_ADD_TEST(suite, test_parse_cmdline_ok) == NULL ||
         CU_ADD_TEST(suite, test_get_proc_file_error) == NULL ||
