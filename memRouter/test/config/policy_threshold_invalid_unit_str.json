@@ -1,0 +1,7 @@
+{
+    "type": "mig_policy_threshold",
+    "policy": {
+       "unit": "",
+       "threshold": 100
+    }
+ }

@@ -1,0 +1,7 @@
+{
+    "type": "mig_policy_threshold",
+    "policy": {
+       "unit": "KB",
+       "threshold": 2147483648
+    }
+ }
