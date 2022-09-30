@@ -1,0 +1,7 @@
+{
+    "geg": "mig_policy_threshold",
+    "policy": {
+       "unit": "KB",
+       "threshold": -1
+    }
+ }
