@@ -586,7 +586,7 @@ int force_swapout(const void *addr, size_t len)
     if (!is_uswap_enabled() || !is_uswap_threads_alive()) {
         return USWAP_ERROR;
     }
-    if (addr == NULL || len > SSIZE_MAX) {
+    if (addr == NULL || len >= SSIZE_MAX) {
         return USWAP_ERROR;
     }
 
