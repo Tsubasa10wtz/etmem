@@ -98,7 +98,7 @@ static int get_pids(int index)
     return pid;
 }
 
-static int init_ops(struct task *tk)
+static void init_ops(struct task *tk)
 {
     tk->eng->ops->fill_eng_params = NULL;
     tk->eng->ops->clear_eng_params = NULL;
