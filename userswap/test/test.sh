@@ -60,7 +60,12 @@ while true; do
             usage; exit 0;;
         -m|--cmake)
             CMAKE_ENABLE=yes
-            shift ;;
+            case "$2" in
+                "") shift 2;;
+                coverage) COVERAGE_ENABLE=yes; shift 2;;
+                asan) ASAN_ENABLE=yes; shift 2;;
+                *)echo -e "\033[;31mError\033[0m param: $2"; exit 1;;
+            esac;;
         -c|--compile)
             COMPILE_ENABLE=yes
             shift;;
