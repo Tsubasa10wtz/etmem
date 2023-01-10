@@ -270,7 +270,7 @@ static struct page_refs *memdcd_do_scan(const struct task_pid *tpid, const struc
 
     /* loop for scanning idle_pages to get result of memory access. */
     for (i = 0; i < page_scan->loop; i++) {
-        ret = get_page_refs(vmas, pid, &page_refs, NULL, 0);
+        ret = get_page_refs(vmas, pid, &page_refs, NULL, 0, i);
         if (ret != 0) {
             etmemd_log(ETMEMD_LOG_ERR, "scan operation failed\n");
             /* free page_refs nodes already exist */

@@ -51,6 +51,8 @@ set(ETMEM_SRC
  ${ETMEM_SRC_DIR}/etmem_rpc.c
  ${ETMEM_SRC_DIR}/etmem_common.c)
 
+LINK_LIBRARIES(m)
+
 add_executable(etmemd
  ${ETMEMD_SRC})
 

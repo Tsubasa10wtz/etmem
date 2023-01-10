@@ -53,7 +53,7 @@ static struct memory_grade *slide_policy_interface(struct page_sort **page_sort,
         page_refs = (*page_sort)->page_refs;
 
         while (*page_refs != NULL) {
-            if ((*page_refs)->count >= slide_params->t) {
+            if ((*page_refs)->closeness >= slide_params->t) {
                 *page_refs = add_page_refs_into_memory_grade(*page_refs, &memory_grade->hot_pages);
                 continue;
             }
@@ -71,7 +71,7 @@ static struct memory_grade *slide_policy_interface(struct page_sort **page_sort,
         page_refs = &((*page_sort)->page_refs_sort[i]);
 
         while (*page_refs != NULL) {
-            if ((*page_refs)->count >= slide_params->t) {
+            if ((*page_refs)->closeness >= slide_params->t) {
                 *page_refs = add_page_refs_into_memory_grade(*page_refs, &memory_grade->hot_pages);
                 goto count_out;
             }
