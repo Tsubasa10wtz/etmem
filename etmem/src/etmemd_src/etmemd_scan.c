@@ -18,6 +18,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <glib.h>
+#include <math.h>
 
 #include "etmemd.h"
 #include "etmemd_scan.h"
@@ -477,7 +478,8 @@ static enum page_idle_type get_page_type_from_buf(unsigned char buf)
     return (enum page_idle_type)((buf >> 4) & 0x0F);
 }
 
-static struct page_refs *alloc_page_refs_node(u_int64_t addr, int weight, enum page_type type)
+//add the initialization of the average and variance
+static struct page_refs *alloc_page_refs_node(u_int64_t addr, double est_time, enum page_type type)
 {
     struct page_refs *pf = NULL;
 
@@ -486,16 +488,26 @@ static struct page_refs *alloc_page_refs_node(u_int64_t addr, int weight, enum p
         etmemd_log(ETMEMD_LOG_ERR, "alloc for page_refs fail\n");
         return NULL;
     }
-
+    
+    //idle page can't be considered visited
+    if (est_time != -1){
+        pf->m = -1;
+    }
+    else {
+        pf->m = -2;
+    }
+    pf->last_time = est_time;
     pf->addr = addr;
-    pf->count = weight;
     pf->type = type;
+    //initialize the average and variance of the intervals
+    pf->std = -2;
+    pf->avg = 0;
 
     return pf;
 }
 
 static struct page_refs **update_page_refs(u_int64_t addr,
-                                           int weight,
+                                           double est_time,
                                            enum page_type type,
                                            struct page_refs **page_refs)
 {
@@ -503,28 +515,65 @@ static struct page_refs **update_page_refs(u_int64_t addr,
 
     /* if it is a new list or a new node that we need to alloc */
     if (*page_refs == NULL) {
-        *page_refs = alloc_page_refs_node(addr, weight, type);
+        *page_refs = alloc_page_refs_node(addr, est_time, type);
         if (*page_refs == NULL) {
             return NULL;
         }
         return &((*page_refs)->next);
     }
-
+    
+    /* define x to record the interval temporarily.
+       u, v, new_u, new_v is to update the average and 
+       variance dynamically.
+    */
+    double x, u, v, new_u, new_v;
     /* if the address is the one that we need to update */
     if (addr == (*page_refs)->addr) {
-        (*page_refs)->count += weight;
+        if (est_time != -1){
+            (*page_refs)->m++;
+	        int m_ = (*page_refs)->m;
+            /* Only when the the number of visit is more than 3(the number of intervals
+               more than 2), the average and the variance be calculated by usual method.
+               Otherwise we give specific value. 
+            */
+            if (m_ == -1){
+                (*page_refs)->last_time = est_time;
+            }
+            else {
+                u = (*page_refs)->avg;
+                v = (*page_refs)->std;
+                if (est_time - (*page_refs)->last_time > 0) x = log(est_time - (*page_refs)->last_time);
+                else x = -1;
+                (*page_refs)->last_time = est_time;
+                if (m_ == 0){
+                    new_u = x;
+                    new_v = 2;
+                }
+                else {
+                    //dynamically update the average and variance
+                    new_u = (m_ * u + x) / (m_ + 1);
+                    new_v = sqrt((m_ * (pow(v, 2) + pow(new_u - u, 2)) + pow(new_u - x, 2))/ (m_ + 1));
+                    if (new_v < 1){
+                        new_v = 1;
+                    }
+
+                }
+                (*page_refs)->avg = new_u;
+                (*page_refs)->std = new_v;
+            }
+        }
         return &((*page_refs)->next);
     }
 
     /* if the address is behind the currnet node, return to operate next node */
     if (addr > (*page_refs)->addr) {
         page_refs = &((*page_refs)->next);
-        return update_page_refs(addr, weight, type, page_refs);
+        return update_page_refs(addr, est_time, type, page_refs);
     }
 
     /* the address must be before the current node when code gets here, alloc a node first,
      * and then insert into the list */
-    tmp_pf = alloc_page_refs_node(addr, weight, type);
+    tmp_pf = alloc_page_refs_node(addr, est_time, type);
     if (tmp_pf == NULL) {
         /* it is no meaning to do anything else if we cannot alloc a page_refs struct */
         return NULL;
@@ -536,9 +585,67 @@ static struct page_refs **update_page_refs(u_int64_t addr,
     return &((*page_refs)->next);
 }
 
-static struct page_refs **record_parse_result(u_int64_t addr, enum page_idle_type type, int nr, struct page_refs **pf)
+// static struct page_refs **update_page_refs(u_int64_t addr,
+//                                            int weight,
+//                                            enum page_type type,
+//                                            struct page_refs **page_refs)
+// {
+//     struct page_refs *tmp_pf = NULL;
+
+//     /* if it is a new list or a new node that we need to alloc */
+//     if (*page_refs == NULL) {
+//         *page_refs = alloc_page_refs_node(addr, weight, type);
+//         if (*page_refs == NULL) {
+//             return NULL;
+//         }
+//         return &((*page_refs)->next);
+//     }
+
+//     /* if the address is the one that we need to update */
+//     if (addr == (*page_refs)->addr) {
+//         (*page_refs)->count += weight;
+//         return &((*page_refs)->next);
+//     }
+
+//     /* if the address is behind the currnet node, return to operate next node */
+//     if (addr > (*page_refs)->addr) {
+//         page_refs = &((*page_refs)->next);
+//         return update_page_refs(addr, weight, type, page_refs);
+//     }
+
+//     /* the address must be before the current node when code gets here, alloc a node first,
+//      * and then insert into the list */
+//     tmp_pf = alloc_page_refs_node(addr, weight, type);
+//     if (tmp_pf == NULL) {
+//         /* it is no meaning to do anything else if we cannot alloc a page_refs struct */
+//         return NULL;
+//     }
+
+//     tmp_pf->next = *page_refs;
+//     *page_refs = tmp_pf;
+
+//     return &((*page_refs)->next);
+// }
+
+/* use erf function to calculate the p value.
+   the p value can be seen as the possibility
+*/
+static void update_possibility(struct page_refs **page_refs, int l){
+    if ((*page_refs)->std == -2){
+        (*page_refs)->possibility = 0;
+    }
+    else {
+        double log_time = log((double)l - (*page_refs)->last_time);
+        double deviations = (log_time - (*page_refs)->avg / (*page_refs)->std);
+        (*page_refs)->possibility = 1 - (1.0 + erf(deviations / sqrt(2.0))) / 2.0;   
+    }
+}
+
+static struct page_refs **record_parse_result(u_int64_t addr, enum page_idle_type type, int nr, struct page_refs **pf,
+                                              int loop_index, int loop_end)
 {
-    int i, weight;
+    int i;
+    double est_time;
     enum page_type page_size_type;
 
     /* ignore unaligned address when walk, because pages handled need to be aligned */
@@ -549,25 +656,61 @@ static struct page_refs **record_parse_result(u_int64_t addr, enum page_idle_typ
     }
 
     for (i = 0; i < nr; i++) {
-        if (type >= PTE_IDLE) {
-            weight = IDLE_TYPE_WEIGHT;
-        } else if (type >= PTE_DIRTY) {
-            weight = WRITE_TYPE_WEIGHT;
+        if (type >= PTE_IDLE){
+            est_time = -1;
         } else {
-            weight = READ_TYPE_WEIGHT;
+            //estiamte time by loop no. 
+            est_time = (double)loop_index + 0.5;
         }
 
         page_size_type = g_page_type_by_idle_kind[type];
-        pf = update_page_refs(addr, weight, page_size_type, pf);
+        pf = update_page_refs(addr, est_time, page_size_type, pf);
+        /*when it is the last loop, the possibility of being visted 
+        in the future should be updated*/
+        if (loop_index == loop_end) update_possibility(pf, loop_index);
         if (pf == NULL) {
             break;
         }
-
+        
         addr += page_type_to_size(page_size_type);
     }
 
     return pf;
 }
+
+// static struct page_refs **record_parse_result(u_int64_t addr, enum page_idle_type type, int nr, struct page_refs **pf,
+//                                               int loop_index)
+// {
+//     int i, weight;
+//     enum page_type page_size_type;
+
+//     /* ignore unaligned address when walk, because pages handled need to be aligned */
+//     if ((addr & (page_type_to_size(g_page_type_by_idle_kind[type]) - 1)) > 0) {
+//         etmemd_log(ETMEMD_LOG_WARN, "ignore address %lx which not aligned %lx for type %d\n", addr,
+//                    page_type_to_size(g_page_type_by_idle_kind[type]), type);
+//         return pf;
+//     }
+
+//     for (i = 0; i < nr; i++) {
+//         if (type >= PTE_IDLE) {
+//             weight = IDLE_TYPE_WEIGHT;
+//         } else if (type >= PTE_DIRTY) {
+//             weight = WRITE_TYPE_WEIGHT;
+//         } else {
+//             weight = READ_TYPE_WEIGHT;
+//         }
+
+//         page_size_type = g_page_type_by_idle_kind[type];
+//         pf = update_page_refs(addr, weight, page_size_type, pf);
+//         if (pf == NULL) {
+//             break;
+//         }
+
+//         addr += page_type_to_size(page_size_type);
+//     }
+
+//     return pf;
+// }
 
 static int get_process_use_rss(int nr, enum page_idle_type type)
 {
@@ -578,7 +721,8 @@ static int get_process_use_rss(int nr, enum page_idle_type type)
 }
 
 static struct page_refs **parse_vma_result(const unsigned char *buf, u_int64_t size,
-                                           struct page_refs **pf, u_int64_t *end, unsigned long *use_rss)
+                                           struct page_refs **pf, u_int64_t *end, unsigned long *use_rss,
+                                           int loop_index, int loop_end)
 {
     u_int64_t i;
     u_int64_t address = 0;
@@ -610,9 +754,9 @@ static struct page_refs **parse_vma_result(const unsigned char *buf, u_int64_t s
 
         /* update address if the page type is hole */
         if (type == PMD_IDLE_PTES) {
-            pf = record_parse_result(address, PTE_IDLE, nr * PMD_IDLE_PTES_PARAMETER, pf);
+            pf = record_parse_result(address, PTE_IDLE, nr * PMD_IDLE_PTES_PARAMETER, pf, loop_index, loop_end);
         } else if (type < PMD_IDLE_PTES) {
-            pf = record_parse_result(address, type, nr, pf);
+            pf = record_parse_result(address, type, nr, pf, loop_index, loop_end);
         } else {
             address = address + (u_int64_t)nr * page_type_to_size(g_page_type_by_idle_kind[type]);
             continue;
@@ -630,7 +774,9 @@ static struct page_refs **parse_vma_result(const unsigned char *buf, u_int64_t s
 struct page_refs **walk_vmas(int fd,
                              struct walk_address *walk_address,
                              struct page_refs **pf,
-                             unsigned long *use_rss)
+                             unsigned long *use_rss,
+                             int loop_index,
+                             int loop_end)
 {
     unsigned char *buf = NULL;
     u_int64_t size;
@@ -660,7 +806,7 @@ struct page_refs **walk_vmas(int fd,
         return pf;
     }
 
-    pf = parse_vma_result(buf, (u_int64_t)recv_size, pf, &(walk_address->last_walk_end), use_rss);
+    pf = parse_vma_result(buf, (u_int64_t)recv_size, pf, &(walk_address->last_walk_end), use_rss, loop_index, loop_end);
 
     free(buf);
     return pf;
@@ -673,7 +819,7 @@ struct page_refs **walk_vmas(int fd,
 * In other policies, NULL can be directly transmitted.
 * */
 int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **page_refs,
-                  unsigned long *use_rss, struct ioctl_para *ioctl_para)
+                  unsigned long *use_rss, struct ioctl_para *ioctl_para, int loop_idx, int loop_end)
 {
     u_int64_t i;
     FILE *scan_fp = NULL;
@@ -716,7 +862,7 @@ int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **p
         if (walk_address.last_walk_end > vma->start) {
             walk_address.walk_start = walk_address.last_walk_end;
         }
-        tmp_page_refs = walk_vmas(fd, &walk_address, tmp_page_refs, use_rss);
+        tmp_page_refs = walk_vmas(fd, &walk_address, tmp_page_refs, use_rss, loop_idx, loop_end);
         if (tmp_page_refs == NULL) {
             etmemd_log(ETMEMD_LOG_ERR, "get end of address after last walk fail\n");
             fclose(scan_fp);
@@ -746,7 +892,7 @@ int etmemd_get_page_refs(const struct vmas *vmas, const char *pid, struct page_r
     ioctl_para.ioctl_parameter = flags & ALL_SCAN_FLAGS;
     ioctl_para.ioctl_cmd = IDLE_SCAN_ADD_FLAGS;
 
-    return get_page_refs(vmas, pid, page_refs, NULL, &ioctl_para);
+    return get_page_refs(vmas, pid, page_refs, NULL, &ioctl_para, 0);
 }
 
 void etmemd_free_page_refs(struct page_refs *pf)
@@ -795,7 +941,8 @@ struct page_refs *etmemd_do_scan(const struct task_pid *tpid, const struct task 
 
     /* loop for scanning idle_pages to get result of memory access. */
     for (i = 0; i < page_scan->loop; i++) {
-        ret = get_page_refs(vmas, pid, &page_refs, NULL, &ioctl_para);
+        //pass parameter i(loop no.) and page_scan->loop - 1(total loop number)
+        ret = get_page_refs(vmas, pid, &page_refs, NULL, &ioctl_para, i, page_scan->loop - 1);
         if (ret != 0) {
             etmemd_log(ETMEMD_LOG_ERR, "scan operation failed\n");
             /* free page_refs nodes already exist */
@@ -870,8 +1017,8 @@ struct page_sort *alloc_page_sort(const struct task_pid *tpid)
     }
 
     page_sort->loop = page_scan->loop;
-
-    page_sort->page_refs_sort = (struct page_refs **)calloc((page_scan->loop + 1), sizeof(struct page_refs *));
+    //pages are sorted by the possibility 
+    page_sort->page_refs_sort = (struct page_refs **)calloc(5, sizeof(struct page_refs *));
     if (page_sort->page_refs_sort == NULL) {
         etmemd_log(ETMEMD_LOG_ERR, "calloc page refs sort failed.\n");
         free(page_sort);
@@ -914,6 +1061,17 @@ void etmemd_scan_exit(void)
     g_exp_scan_inited = false;
 }
 
+/*sort the page_refs by possibility interval.
+  the page_refs most unlike to be visit in the future
+  will in the front of the list.*/
+int sort_by_possibility(double p){
+    if (p < 0.05) return 0;
+    else if (p < 0.1) return 1;
+    else if (p < 0.2) return 2;
+    else if (p < 0.4) return 3;
+    else return 4; 
+}
+
 /* Move the colder pages by sorting page refs.
  * Use original page_refs if dram_percent is not set.
  * But, use the sorting result of page_refs, if dram_percent is set to (0, 100] */
@@ -922,6 +1080,7 @@ struct page_sort *sort_page_refs(struct page_refs **page_refs, const struct task
     struct slide_params *slide_params = NULL;
     struct page_sort *page_sort = NULL;
     struct page_refs *page_next = NULL;
+    int index;
 
     page_sort = alloc_page_sort(tpid);
     if (page_sort == NULL)
@@ -935,10 +1094,12 @@ struct page_sort *sort_page_refs(struct page_refs **page_refs, const struct task
 
     while (*page_refs != NULL) {
         page_next = (*page_refs)->next;
-        (*page_refs)->next = (page_sort->page_refs_sort[(*page_refs)->count]);
-        (page_sort->page_refs_sort[(*page_refs)->count]) = *page_refs;
+        index = sort_by_possibility((*page_refs)->possibility);
+        (*page_refs)->next = (page_sort->page_refs_sort[index]);
+        (page_sort->page_refs_sort[index]) = *page_refs;
         *page_refs = page_next;
     }
 
     return page_sort;
 }
+

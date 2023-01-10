@@ -36,6 +36,11 @@ struct page_refs {
     int count;                  /* page count */
     enum page_type type;        /* page type including PTE/PMD/PUD */
 
+    double possibility;         /* the possibility of being visited */
+    int m;                      /* visit count*/
+    double avg, std, last_time; /*the average of visit intervals, the variance of visit intervals and the last
+                                  time of visit*/
+
     struct page_refs *next;     /* point to next page */
 };
 

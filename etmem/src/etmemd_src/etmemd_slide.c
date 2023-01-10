@@ -53,7 +53,7 @@ static struct memory_grade *slide_policy_interface(struct page_sort **page_sort,
         page_refs = (*page_sort)->page_refs;
 
         while (*page_refs != NULL) {
-            if ((*page_refs)->count >= slide_params->t) {
+            if ((int)((*page_refs)->possibility * 100) >= slide_params->t) {
                 *page_refs = add_page_refs_into_memory_grade(*page_refs, &memory_grade->hot_pages);
                 continue;
             }
@@ -66,12 +66,12 @@ static struct memory_grade *slide_policy_interface(struct page_sort **page_sort,
     need_2_swap_num = check_should_migrate(tpid);
     if (need_2_swap_num == 0)
         goto count_out;
-
-    for (int i = 0; i < page_scan->loop + 1; i++) {
+    // the total loop number should equal the size of page->sort in "etmemd_scan.c" 
+    for (int i = 0; i < 5; i++) {
         page_refs = &((*page_sort)->page_refs_sort[i]);
 
         while (*page_refs != NULL) {
-            if ((*page_refs)->count >= slide_params->t) {
+            if ((int)((*page_refs)->possibility * 100) >= slide_params->t) {
                 *page_refs = add_page_refs_into_memory_grade(*page_refs, &memory_grade->hot_pages);
                 goto count_out;
             }
@@ -341,9 +341,9 @@ static int slide_fill_task(GKeyFile *config, struct task *tk)
         etmemd_log(ETMEMD_LOG_ERR, "slide fill task fail\n");
         goto free_params;
     }
-
-    if (params->t > page_scan->loop * WRITE_TYPE_WEIGHT) {
-        etmemd_log(ETMEMD_LOG_ERR, "engine param T must less than loop.\n");
+    //params->t is a percentage.
+    if (params->t > 100) {
+        etmemd_log(ETMEMD_LOG_ERR, "engine param T must less than 1.\n");
         goto free_params;
     }
     tk->params = params;
