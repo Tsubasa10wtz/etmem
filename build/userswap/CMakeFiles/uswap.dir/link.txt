@@ -1,0 +1,2 @@
+/usr/bin/ar qc libuswap.a  CMakeFiles/uswap.dir/src/lib_uswap.c.o CMakeFiles/uswap.dir/src/uswap_server.c.o CMakeFiles/uswap.dir/src/uswap_log.c.o
+/usr/bin/ranlib libuswap.a

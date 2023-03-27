@@ -892,7 +892,7 @@ int etmemd_get_page_refs(const struct vmas *vmas, const char *pid, struct page_r
     ioctl_para.ioctl_parameter = flags & ALL_SCAN_FLAGS;
     ioctl_para.ioctl_cmd = IDLE_SCAN_ADD_FLAGS;
 
-    return get_page_refs(vmas, pid, page_refs, NULL, &ioctl_para, 0);
+    return get_page_refs(vmas, pid, page_refs, NULL, &ioctl_para, 0, 0);
 }
 
 void etmemd_free_page_refs(struct page_refs *pf)

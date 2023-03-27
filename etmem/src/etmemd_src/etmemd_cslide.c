@@ -1313,7 +1313,7 @@ static int cslide_scan_vmas(struct cslide_pid_params *params)
         vma = vma_pf->vma;
         walk_address.walk_start = vma->start;
         walk_address.walk_end = vma->end;
-        if (walk_vmas(fd, &walk_address, &vma_pf->page_refs, NULL, 0) == NULL) {
+        if (walk_vmas(fd, &walk_address, &vma_pf->page_refs, NULL, 0, 0) == NULL) {
             etmemd_log(ETMEMD_LOG_ERR, "task %u scan vma start %llu end %llu fail\n",
                     params->pid, vma->start, vma->end);
             fclose(scan_fp);

@@ -74,9 +74,10 @@ struct page_refs *etmemd_do_scan(const struct task_pid *tpid, const struct task 
 /* free vma list struct */
 void free_vmas(struct vmas *vmas);
 
-struct page_refs **walk_vmas(int fd, struct walk_address *walk_address, struct page_refs **pf, unsigned long *use_rss, int loop_index);
+int sort_by_possibility(double p);
+struct page_refs **walk_vmas(int fd, struct walk_address *walk_address, struct page_refs **pf, unsigned long *use_rss, int loop_index, int loop_end);
 int get_page_refs(const struct vmas *vmas, const char *pid, struct page_refs **page_refs,
-                  unsigned long *use_rss, struct ioctl_para *ioctl_para, int loop_idx);
+                  unsigned long *use_rss, struct ioctl_para *ioctl_para, int loop_idx, int loop_end);
 
 int split_vmflags(char ***vmflags_array, char *vmflags);
 struct vmas *get_vmas_with_flags(const char *pid, char **vmflags_array, int vmflags_num, bool is_anon_only);
